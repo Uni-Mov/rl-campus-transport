@@ -1,4 +1,4 @@
-# CampusRide-UNRC-2025
+# CampusTransport-UNRC-2025
 
 Repository for the **Project 2025** course at UNRC. The goal is to develop an app that connects drivers and passengers within the campus, optimizing trips so that drivers don’t deviate much from their routes. A *Reinforcement Learning* algorithm will decide which passengers are worth picking up based on their location and route.
 
