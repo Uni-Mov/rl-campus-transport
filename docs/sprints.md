@@ -2,7 +2,7 @@
 
 Este documento resume la planificación y objetivos del Sprint 0, cuyo foco es diseñar un MVP basado en un algoritmo de Reinforcement Learning para decidir qué pasajeros conviene recoger.
 
-## Objetivo
+## Objetivo 🤓
 Diseñar y planificar un MVP cuyo foco sea un algoritmo de **Reinforcement Learning (RL)** capaz de decidir qué pasajeros conviene recoger, dado un conductor y un conjunto de posibles pasajeros.
 
 ## 1. Alcance y restricciones
