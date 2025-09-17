@@ -10,7 +10,6 @@ export const useAuth = () => {
     }
     , []);
 
-    
     const login = () => {
         const token = "hola soy un token";
         localStorage.setItem("authToken", token);
