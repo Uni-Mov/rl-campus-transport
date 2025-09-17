@@ -1,5 +1,8 @@
-export default function Header() {
- return (<header className="border-b border-gray-200 bg-white sticky top-0 z-50">
+import {useAuth} from "../../hooks/useAuth";
+export default function Header({isLoggedIn}: {isLoggedIn: boolean}) {
+  const { login, logout } = useAuth();
+ return (
+        <header className="border-b border-gray-200 bg-white sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center">
@@ -18,20 +21,33 @@ export default function Header() {
                 />
               </svg>
             </div>
-            <h1 className="text-xl font-bold text-gray-900">CampusTransport</h1>
-            <span className="ml-2 px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">UNRC 2025</span>
+            <h1 className="text-xl font-bold text-gray-900">Campus transport</h1>
           </div>
           <nav className="hidden md:flex items-center gap-6">
-            <a href="#features" className="text-gray-600 hover:text-gray-900 transition-colors">
-              Features
-            </a>
-            <a href="#technology" className="text-gray-600 hover:text-gray-900 transition-colors">
-              Technology
-            </a>
-            <button className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
-              View on GitHub
-            </button>
+          {!isLoggedIn && (
+            <>
+              <a href="#features" className="text-gray-600 hover:text-gray-900 transition-colors">
+                Features
+              </a>
+              <a href="#community" className="text-gray-600 hover:text-gray-900 transition-colors">
+                Community
+              </a>
+              <button className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                View on GitHub
+              </button>
+              <button onClick={() => login('soyuntoken')} className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors">
+                login
+              </button>
+            </>
+          )} 
+          {isLoggedIn && (
+            <>
+              <button onClick={() => logout()} className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                Logout
+              </button>
+            </>
+          )}
           </nav>
-        </div>
+        </div> 
         </header>)
 }
