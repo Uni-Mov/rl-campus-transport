@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-
+import { register as api_register, login as api_login, logout as api_logout } from "../api/auth-api";
 export const useAuth = () => {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -16,9 +16,15 @@ export const useAuth = () => {
         setIsLoggedIn(true);
     }
     const logout = () => {
+        api_logout();
         localStorage.removeItem("authToken");
         setIsLoggedIn(false);
     }
-    return { isLoggedIn, loading, login, logout };
+    const register = async (user: string, password: string) => {
+        const res = await api_register(user, password);
+        localStorage.setItem("authToken", res);
+        setIsLoggedIn(true);
+    }
+    return { isLoggedIn, loading, login, logout, register };
 
 };
