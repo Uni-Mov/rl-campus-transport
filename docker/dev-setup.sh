@@ -13,8 +13,8 @@ read -p "desea reconstruir el contenedor? (y/n): " rebuild
 
 if [ "$rebuild" = "y" ]; then
     echo "construyendo contenedores"
-    docker-compose up --build frontend
+    docker compose up --build frontend
 else
     echo "ejecutando contenedores existentes"
-    docker-compose up frontend
+    docker compose up frontend
 fi
