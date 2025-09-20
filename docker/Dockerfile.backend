@@ -1,0 +1,27 @@
+# Use a lightweight Python 3.12 base image
+FROM python:3.12-slim
+
+# Set the working directory inside the container
+WORKDIR /app
+
+# Install system dependencies needed to build Python packages
+# 'build-essential' includes gcc, make, etc.
+# Then clean the apt cache to reduce image size
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy the requirements file into the container
+COPY backend/requirements.txt .
+
+# Install Python dependencies from requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the backend source code into the container
+COPY backend/ .
+
+# Expose port 5000, which Flask uses by default
+EXPOSE 5000
+
+# Default command to run the application
+CMD ["python", "app/main.py"]
