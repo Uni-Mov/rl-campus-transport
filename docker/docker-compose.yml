@@ -13,6 +13,8 @@ services:
       - CHOKIDAR_USEPOLLING=true
       - WATCHPACK_POLLING=true
     restart: unless-stopped
+    networks:
+      - app-network
 
   backend:
     build:
@@ -27,10 +29,11 @@ services:
       - FLASK_ENV=development
       - FLASK_DEBUG=1
       - PYTHONPATH=/app
-      - DATABASE_URL=postgresql://user:password@db:5432/rl_campus_transport
+      - FLASK_RUN_HOST=0.0.0.0
+      - FLASK_RUN_PORT=5000
     restart: unless-stopped
-    depends_on:
-      - db
+    networks:
+      - app-network
 
   db:
     image: postgres:15-alpine
@@ -44,6 +47,12 @@ services:
     ports:
       - "5432:5432"
     restart: unless-stopped
+    networks:
+      - app-network
 
 volumes:
   postgres_data:
+
+networks:
+  app-network:
+    driver: bridge
