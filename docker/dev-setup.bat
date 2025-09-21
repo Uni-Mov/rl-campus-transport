@@ -16,10 +16,10 @@ set /p rebuild= desea reconstruir el contenedor? (y/n):
 
 IF "%rebuild%"=="y" (
     echo reconstruyendo contenedores
-    docker-compose up --build frontend
+    docker-compose up --build 
 ) ELSE (
     echo ejecutando contenedores existentes
-    docker-compose up frontend
+    docker-compose up 
 )
 
 pause

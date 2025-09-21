@@ -17,11 +17,33 @@ services:
   backend:
     build:
       context: ..
-      dockerfile: docker/DockerFile.backend
+      dockerfile: docker/Dockerfile.backend
     ports:
-      - "8000:8000"
+      - "5000:5000"
+    volumes:
+      - ../backend:/app
+      - /app/__pycache__
     environment:
-      - NODE_ENV=development
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+      - PYTHONPATH=/app
+      - DATABASE_URL=postgresql://user:password@db:5432/rl_campus_transport
     restart: unless-stopped
     depends_on:
-      - frontend
+      - db
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=rl_campus_transport
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
