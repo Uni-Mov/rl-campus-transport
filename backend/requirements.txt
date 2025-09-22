@@ -1,0 +1,6 @@
+flask
+flask-cors
+pydantic # para validar datos (útil en schemas). Ahorra bugs al trabajar con JSON
+sqlalchemy # para bases de datos
+pytest
+pylint

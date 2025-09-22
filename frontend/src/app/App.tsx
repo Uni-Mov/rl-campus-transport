@@ -5,6 +5,7 @@ import Login from "../pages/login/Login"
 import Header from "../components/organisms/Header"
 import Footer from "../components/organisms/Footer"
 import { Error404 } from "../pages/404/error"
+import Users from "../pages/users/Users"
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
           <Route path="/clients" element={<Clients />} />
           <Route path="/login" element={<Login />}/>
           <Route path="*" element={<Error404 />} />
+          <Route path="/users" element={<Users />} />
         </Routes>
       </main>
       <Footer />
