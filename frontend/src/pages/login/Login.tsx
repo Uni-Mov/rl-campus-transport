@@ -1,13 +1,10 @@
 import { useEffect, useState } from "react";
-import type { User } from "@models/user";
+import type { User } from "src/models/user";
 import { Eye, Lock, Mail } from 'lucide-react';
 
 export default function Login() { 
   const [user, setUser] = useState<User | null>(null);
-  function showPassword(): void {
-    const x = document.getElementById("password") as HTMLInputElement;
-    x.type = x.type === "password" ? "text" : "password";
-  }
+  const [showPassword, setShowPassword] = useState(false);
 
   return (
     <div className="min-h-screen bg-white">
@@ -63,7 +60,7 @@ export default function Login() {
                   </svg>
                   <input
                     id="password"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     placeholder="Enter your password"
                     className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-colors"
                     required
@@ -71,7 +68,7 @@ export default function Login() {
                   <button
                     type="button"
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    onClick={showPassword}
+                    onClick={() => setShowPassword((prev) => !prev)}
                   >
                     <Eye size={16} color="gray" />
                   </button>
