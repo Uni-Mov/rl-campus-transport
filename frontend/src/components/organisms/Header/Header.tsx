@@ -16,9 +16,9 @@ export default function Header() {
 
   if (!auth) return null;
 
-  const { isLoggedIn, logout } = auth;
+  const { isLoggedIn, login, logout } = auth;
   const buttons = [];
-
+  
   if (isLoggedIn) {
   buttons.push({ label: "Logout", onClick: logout, bg: "red-600" });
   } else {
@@ -43,7 +43,6 @@ export default function Header() {
   return (
     <header className="border-b border-gray-200 bg-white sticky top-0 z-50">
       <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-
         <div className="flex items-center gap-2">
           <Link to="/">
             <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center">
@@ -52,7 +51,6 @@ export default function Header() {
           </Link>
           <h1 className="text-xl font-bold text-gray-900">Campus transport</h1>
         </div>
-
         <nav className="hidden md:flex items-center gap-4">
           {landing && (
             <>
@@ -68,7 +66,7 @@ export default function Header() {
           {buttons.map((btn) => (
             <button
               key={btn.label}
-              onClick={btn.onClick ?? (() => btn.to && navigate(btn.to))}
+              onClick={btn.onClick ?? (() => btn.to && navigate(btn.to))} // if onClick redirect to same page, else navigate to other route
               className={`px-6 py-2 bg-${btn.bg} text-white rounded-lg hover:bg-emerald-700 transition-colors`}
             >
               {btn.label}
