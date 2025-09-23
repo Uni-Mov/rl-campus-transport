@@ -3,7 +3,6 @@ from enum import Enum
 from typing import Optional
 from datetime import datetime
 
-
 # enum for role 
 class UserRole(str, Enum):
     DRIVER = "driver"
