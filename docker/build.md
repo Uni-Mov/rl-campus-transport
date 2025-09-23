@@ -6,7 +6,8 @@ This project uses Docker and Docker Compose to isolate the application and its d
 - Frontend:
   - On Linux:
   ```bash
-  ./dev-setup.sh
+  chmod +x dev-setup.sh 
+  sudo ./dev-setup.sh
   ```
   - On Windows:
   ```bash
