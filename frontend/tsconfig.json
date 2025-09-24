@@ -7,7 +7,14 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@models/*": ["src/types/*"],
+      "@/*": ["src/*"],
+      "@models/*": ["src/models/*"],
+      "@/components/ui/*": ["src/types/components/ui/*"],
+      "@/lib/*": ["src/lib/*"],
+      "@models/lib/*": ["src/types/lib/*"],
+      "@models/components/*": ["src/types/components/*"],
+      "@models/config": ["src/types/components/config"],
+      "@/types/*": ["src/types/*"],
       "@hooks/*": ["src/hooks/*"],
       "@components/*": ["src/components/*"]
     }

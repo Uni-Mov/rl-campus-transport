@@ -6,6 +6,14 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
+      // shadcn paths targeting src/types
+      '@/components/ui': path.resolve(__dirname, 'src/types/components/ui'),
+      '@/lib': path.resolve(__dirname, 'src/types/lib'),
+      '@models/lib': path.resolve(__dirname, 'src/types/lib'),
+      '@models/components': path.resolve(__dirname, 'src/types/components'),
+      '@models/config': path.resolve(__dirname, 'src/types/components/config'),
+      // Project-wide aliases
+      '@': path.resolve(__dirname, 'src'),
       '@models': path.resolve(__dirname, 'src/models'),
       '@hooks': path.resolve(__dirname, 'src/hooks'),
       '@components': path.resolve(__dirname, 'src/components'),

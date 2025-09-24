@@ -23,12 +23,6 @@ export default function Header() {
   buttons.push({ label: "Logout", onClick: logout, bg: "red-600" });
   } else {
   switch (location.pathname) {
-    case "/":
-      buttons.push(
-        { label: "Login", to: "/login", bg: "primary" },
-        { label: "Sign Up", to: "/register", bg: "primary" }
-      );
-      break;
     case "/login":
       buttons.push({ label: "Sign Up", to: "/register", bg: "primary" });
       break;
@@ -36,6 +30,10 @@ export default function Header() {
       buttons.push({ label: "Login", to: "/login", bg: "primary" });
       break;
     default:
+      buttons.push(
+        { label: "Login", to: "/login", bg: "primary" },
+        { label: "Sign Up", to: "/register", bg: "primary" }
+      )
       break;
   }
 }

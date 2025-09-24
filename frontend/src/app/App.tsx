@@ -6,6 +6,7 @@ import Header from "../components/organisms/Header/Header"
 import Footer from "../components/organisms/Footer"
 import Register from "../pages/register/Register"
 import { Error404 } from "../pages/404/error"
+import Contact from "../pages/contact/Contact"
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
           <Route path="/clients" element={<Clients />} />
           <Route path="/login" element={<Login />}/>
           <Route path="/register" element={<Register />}/>
+          <Route path="/contact" element={<Contact />}/>
           <Route path="*" element={<Error404 />} />
         </Routes>
       </main>
