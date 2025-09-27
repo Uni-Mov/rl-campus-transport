@@ -7,6 +7,7 @@ import Footer from "../components/organisms/Footer"
 import Register from "../pages/register/Register"
 import { Error404 } from "../pages/404/error"
 import Contact from "../pages/contact/Contact"
+import Travel from "../pages/travel/travel"
 
 export default function App() {
   return (
@@ -19,6 +20,7 @@ export default function App() {
           <Route path="/login" element={<Login />}/>
           <Route path="/register" element={<Register />}/>
           <Route path="/contact" element={<Contact />}/>
+          <Route path="/travel" element={<Travel />}/>
           <Route path="*" element={<Error404 />} />
         </Routes>
       </main>
