@@ -1,3 +1,8 @@
 pytest -> Testing
 pylint -> Code review
 
+gymnasium
+networkx
+osmnx
+numpy
+stable-baselines3
