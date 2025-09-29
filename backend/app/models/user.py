@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, Enum, DateTime, Boolean
 from sqlalchemy.sql import func
 import enum
 
-from core.database import Base
+from app.core.database import Base
 
 class UserRole(enum.Enum):
     DRIVER = "driver"

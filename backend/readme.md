@@ -56,5 +56,19 @@ backend/
 5. Los tests en `tests/` permiten verificar que los distintos módulos funcionen correctamente y que la API devuelva los resultados esperados.
 
 ---
+
+### Tests 
+
+Para ejecutar los tests del backend, asegurate de estar en la carpeta `docker/` y ejecutar el siguiente comando:
+
+```bash
+sudo docker compose run --rm backend pytest -v
 ```
+
+Detalles del comando:
+
+- Levanta un contenedor temporal del servicio `backend`.
+- Ejecuta todos los tests que se encuentran en `backend/tests/`.
+- Muestra los resultados en modo detallado (`-v` = verbose).
+- El contenedor temporal se elimina automáticamente al finalizar (`--rm`).
 ```
