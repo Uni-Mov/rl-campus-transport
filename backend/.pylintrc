@@ -1,0 +1,22 @@
+[MASTER]
+ignore=tests
+#load-plugins=pylint_flask
+
+[MESSAGES CONTROL]
+disable=
+    C0114,  # missing-module-docstring
+    C0115,  # missing-class-docstring
+    C0116,  # missing-function-docstring
+    R0903,  # too-few-public-methods
+
+[FORMAT]
+max-line-length=100
+indent-string='    '
+
+[DESIGN]
+max-args=6
+max-attributes=10
+
+[REPORTS]
+output-format=colorized
+
