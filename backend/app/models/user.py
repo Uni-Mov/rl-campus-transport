@@ -1,5 +1,3 @@
-"""Modelo de datos para los usuarios de la aplicacion."""
-
 import enum
 from sqlalchemy import Column, Integer, String, Enum
 from app.core.database import Base
