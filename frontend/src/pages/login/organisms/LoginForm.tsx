@@ -1,9 +1,11 @@
-import { useState } from "react";
 import { Eye, Lock, Mail } from 'lucide-react';
+import { Alert, AlertTitle } from "@/components/ui/alert";
+import { OctagonAlert } from "lucide-react";
+import { useLogin } from "../hooks/useLogin";
 
 export default function LoginForm() {
-  const [showPassword, setShowPassword] = useState(false);
-
+  const { showPassword, setShowPassword, error, handleSubmit } = useLogin();
+  
   return (
     <div className="bg-white shadow-lg rounded-lg border border-gray-200 p-8">
       <div className="mb-6">
@@ -11,7 +13,7 @@ export default function LoginForm() {
         <p className="text-center text-gray-600 mt-1">Enter your email and password to access your account</p>
       </div>
 
-      <form className="space-y-4">
+      <form className="space-y-4" onSubmit={handleSubmit}>
         <div className="space-y-2">
           <label htmlFor="email" className="text-sm font-medium text-gray-700">
             Email address
@@ -58,6 +60,15 @@ export default function LoginForm() {
           Sign in
         </button>
       </form>
+      {error && 
+      <Alert className="bg-destructive/10 dark:bg-destructive/15 py-4 mt-2 text-destructive border-none">
+      <OctagonAlert className="size-4" />
+      <AlertTitle>
+        {error}
+      </AlertTitle>
+    </Alert>
+    }
+
     </div>
   );
 }
