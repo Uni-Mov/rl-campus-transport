@@ -71,8 +71,7 @@ Detalles del comando:
 - Ejecuta todos los tests que se encuentran en `backend/tests/`.
 - Muestra los resultados en modo detallado (`-v` = verbose).
 - El contenedor temporal se elimina automáticamente al finalizar (`--rm`).
-```
-
+  
 ---
 
 ### Configuración de Pylint con pre-commit
@@ -80,7 +79,7 @@ Detalles del comando:
 Para asegurarnos de que todo el código cumpla con las reglas de estilo y buenas prácticas, configuramos **Pylint** con **pre-commit**.  
 De esta manera, cada vez que hagas un commit, el código se validará automáticamente.
 
-## 🚀 Instrucciones para instalarlo en tu máquina
+##  Instrucciones para instalarlo en tu máquina
 
 1. Entrar a la carpeta `backend`:
    ```bash
@@ -100,9 +99,8 @@ De esta manera, cada vez que hagas un commit, el código se validará automátic
 
 Apartir de ahora, cada vez que hagas:
    ```bash
-   git commit -m "mensaje"
+   git commit -m "mensaje".
+   ```
 
-Automaticamente se Ejecutara Pylint sobre el codigo de backend/app/
+Automaticamente se Ejecutara Pylint sobre el codigo de backend/app
 
-
----
