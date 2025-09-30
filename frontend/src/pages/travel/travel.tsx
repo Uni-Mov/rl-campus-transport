@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 import type { Coordinate } from "@/types/coordinate";
 
 
-// Componente que maneja los hooks - solo se renderiza cuando hay coordenadas
+// solo se renderiza cuando hay coordenadas
 function TravelWithRoute({ routeCoordinates }: { routeCoordinates: Coordinate[] }) {
   // seteo el estado inicial del mapa
   const { viewState, setViewState, initialViewState, centerOnPosition, resetView } = useMap({
@@ -73,7 +73,7 @@ function TravelWithRoute({ routeCoordinates }: { routeCoordinates: Coordinate[] 
   );
 }
 
-// Componente principal que solo maneja la carga de datos
+// componente principal que solo maneja la carga de datos
 export default function Travel() {
   const [routeCoordinates, setRouteCoordinates] = useState<Coordinate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -85,8 +85,7 @@ export default function Travel() {
     });
   }, []);
 
-  // Mostrar loading mientras se cargan las coordenadas
-  if (isLoading || routeCoordinates.length === 0) {
+  if (isLoading) {
     return (
       <div className="w-full h-screen flex items-center justify-center">
         <div className="text-lg">Cargando ruta...</div>
@@ -94,6 +93,6 @@ export default function Travel() {
     );
   }
 
-  // Solo renderizar el componente con hooks cuando las coordenadas estén listas
+ // se renderiza el componente solo en el caso de que haya coordenadas
   return <TravelWithRoute routeCoordinates={routeCoordinates} />;
 }
