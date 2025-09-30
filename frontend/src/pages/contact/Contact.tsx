@@ -1,4 +1,6 @@
+import HeaderContact from "./organisms/HeaderContact"
 import Member from "./organisms/Member"
+import MemberContainer from "./organisms/MemberContainer"
 
 export default function Contact() {
   const members = [
@@ -12,15 +14,8 @@ export default function Contact() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold tracking-tight text-foreground mb-4">Our team</h1>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {members.map((member) => (
-          <Member key={member.github} member={member} />
-        ))}
-      </div>
+      <HeaderContact />
+      <MemberContainer />
     </div>
   )
 }
