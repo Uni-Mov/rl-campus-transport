@@ -68,17 +68,17 @@ const handleStartTrip = () => {
 useEffect(() => {
   const interval = setInterval(() => {
     if (isTripStarted && routeIndexRef.current < routeCoordinates.length - 1) {
-      // 1. Avanzar al siguiente punto
+      // avanzar al siguiente punto
       routeIndexRef.current++;
       
-      // 2. Actualizar estados
+      // acctualizar estados
       setCurrentRouteIndex(routeIndexRef.current);
       setCarPosition(routeCoordinates[routeIndexRef.current]);
       
-      // 3. Notificar al mapa (callback)
+      // notificar al mapa (callback)
       onTripUpdate?.(routeCoordinates[routeIndexRef.current], routeIndexRef.current);
       
-      // 4. Verificar si llegó al destino
+      // verificar si llegó al destino
       if (routeIndexRef.current === routeCoordinates.length - 1) {
         setIsTripCompleted(true);
       }
@@ -98,8 +98,8 @@ useEffect(() => {
 const centerOnPosition = (coordinates: Coordinate) => {
   setViewState(prev => ({
     ...prev,
-    longitude: coordinates[0],  // Nueva longitud
-    latitude: coordinates[1],   // Nueva latitud
+    longitude: coordinates[0],  // nueva longitud
+    latitude: coordinates[1],   // nueva latitud
   }));
 };
 ```
@@ -110,18 +110,17 @@ const centerOnPosition = (coordinates: Coordinate) => {
 ```typescript
 // useMemo se ejecuta porque carPosition cambió
 const layers = useMemo(() => [
-  // Ruta completa (gris)
+  // ruta final
   new GeoJsonLayer({ data: fullRouteGeoJson, ... }),
   
-  // Ruta recorrida (verde) - SE ACTUALIZA
+  // ruta actual
   new GeoJsonLayer({ 
-    data: dynamicRouteGeoJson,  // Nuevas coordenadas
+    data: dynamicRouteGeoJson,  // nuevas coordenadas
     getLineColor: [29, 185, 84] 
   }),
-  
-  // Vehículo 3D - SE ACTUALIZA
+  // vehiculo
   new ColumnLayer({
-    data: [{ coordinates: carPosition }],  // Nueva posición
+    data: [{ coordinates: carPosition }],  // nueva posición
     getFillColor: [52, 138, 67]
   }),
 ], [fullRouteGeoJson, dynamicRouteGeoJson, carPosition]);
@@ -132,8 +131,8 @@ const layers = useMemo(() => [
 **En `MapContainer.tsx`:**
 ```typescript
 <DeckGL
-  viewState={viewState}        // ← Vista actualizada
-  layers={layers}             // ← Capas actualizadas
+  viewState={viewState}     // vistas
+  layers={layers}      // recorridos
   onViewStateChange={...}
 >
   <StaticMap />
@@ -182,3 +181,10 @@ const onTripUpdate = useCallback((position, index) => {
 ```
 - Evita re-renders innecesarios
 - Mantiene referencias estables
+
+## Problemas afrontados a la hora de probarlo con una api
+
+Debido a que los datos estaban mockeados, no habia problema con la respuesta de la api, ya que 
+eran datos constantes, al momento de integrarlo con la api se generaron conflictos, ya que el hook
+se renderizaba sin tener los datos efectivamente, por ende se saco la parte dependiente a las coordenadas
+a un componente independiente, asi ahora, solo se ejecutan los hooks a la hora de tener las coordenadas
