@@ -1,7 +1,5 @@
-import Member from "./organisms/Member"
-
-export default function Contact() {
-  const members = [
+export default function GetMembers() {
+  return [
     { name: "Francisco Natale", role: "Frontend developer", avatar: "https://github.com/sbfrancisco.png", github: "https://github.com/sbfrancisco" },
     { name: "Franco Vesnaver", role: "Frontend developer", avatar: "https://github.com/FranVesnaver.png", github: "https://github.com/FranVesnaver" },
     { name: "Valentino Vilar", role: "IA-ML developer", avatar: "https://github.com/valenvilar5.png", github: "https://github.com/valenvilar5" },
@@ -9,18 +7,4 @@ export default function Contact() {
     { name: "Agustin Alieni", role: "Backend developer", avatar: "https://github.com/AlieniAgustin.png", github: "https://github.com/AlieniAgustin" },
     { name: "Hernan Jara", role: "Backend developer", avatar: "https://github.com/HernanJara4.png", github: "https://github.com/HernanJara4" },
   ]
-
-  return (
-    <div className="max-w-4xl mx-auto">
-      <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold tracking-tight text-foreground mb-4">Our team</h1>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {members.map((member) => (
-          <Member key={member.github} member={member} />
-        ))}
-      </div>
-    </div>
-  )
 }
