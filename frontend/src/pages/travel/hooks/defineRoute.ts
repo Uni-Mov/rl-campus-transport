@@ -1,15 +1,15 @@
 import type { Coordinate } from "@/types/coordinate";
 
-export const defineRoute = (): Coordinate[] => {
-        
-const routeCoordinates: Coordinate[] = [
-    [-74.006, 40.7128], // starting point
-    [-73.99, 40.715],
-    [-73.975, 40.725],
-    [-73.955, 40.7310],
-    [-73.950, 40.7320], // final point
-  ];
-
-  return routeCoordinates;
+export const defineRoute = async (): Promise<Coordinate[]> => {
+try {
+  const res = await fetch("https://router.project-osrm.org/route/v1/driving/-64.3051,-33.1208;-64.3499,-33.1226?overview=full&geometries=geojson");
+  
+  const data = await res.json();
+  const coordinates = data.routes[0].geometry.coordinates;
+  return coordinates;
+} catch (err) {
+  console.error("Error fetching route:", err);
+  return [];
 }
+};
   

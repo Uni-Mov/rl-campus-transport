@@ -5,16 +5,19 @@ import { defineRoute } from "./hooks/defineRoute";
 import { TripControls } from "./organisms/TripControls";
 import { TripInfo } from "./organisms/TripInfo";
 import { MapContainer } from "./organisms/MapContainer";
+import { useEffect, useState } from "react";
+import type { Coordinate } from "@/types/coordinate";
 
 
-export default function Travel() {
-  const routeCoordinates = defineRoute();
+// Componente que maneja los hooks - solo se renderiza cuando hay coordenadas
+function TravelWithRoute({ routeCoordinates }: { routeCoordinates: Coordinate[] }) {
   // seteo el estado inicial del mapa
   const { viewState, setViewState, initialViewState, centerOnPosition, resetView } = useMap({
     initialLongitude: routeCoordinates[0][0],
     initialLatitude: routeCoordinates[0][1],
     initialZoom: 12,
   });
+  
   // seteo el estado inicial del viaje
   const { 
     carPosition, 
@@ -27,6 +30,7 @@ export default function Travel() {
     routeCoordinates,
     onTripUpdate: centerOnPosition,
   });
+  
   // seteo el estado inicial de la ruta/lineas de la ruta
   const { layers } = useRoute({
     routeCoordinates,
@@ -67,4 +71,29 @@ export default function Travel() {
       />
     </div>
   );
+}
+
+// Componente principal que solo maneja la carga de datos
+export default function Travel() {
+  const [routeCoordinates, setRouteCoordinates] = useState<Coordinate[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  useEffect(() => {
+    defineRoute().then(coords => {
+      setRouteCoordinates(coords);
+      setIsLoading(false);
+    });
+  }, []);
+
+  // Mostrar loading mientras se cargan las coordenadas
+  if (isLoading || routeCoordinates.length === 0) {
+    return (
+      <div className="w-full h-screen flex items-center justify-center">
+        <div className="text-lg">Cargando ruta...</div>
+      </div>
+    );
+  }
+
+  // Solo renderizar el componente con hooks cuando las coordenadas estén listas
+  return <TravelWithRoute routeCoordinates={routeCoordinates} />;
 }

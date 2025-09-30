@@ -30,7 +30,7 @@ export const useTrip = ({ routeCoordinates, onTripUpdate }: UseTripProps) => {
           setIsTripCompleted(true);
         }
       }
-    }, 3000); 
+    }, 300); 
     
     return () => clearInterval(interval);
   }, [isTripStarted, routeCoordinates, onTripUpdate]);
