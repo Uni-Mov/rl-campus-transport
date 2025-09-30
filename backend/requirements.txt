@@ -4,4 +4,5 @@ pydantic # para validar datos (útil en schemas). Ahorra bugs al trabajar con JS
 sqlalchemy # para bases de datos
 pytest
 pylint
+pre-commit
 pydantic[email]
