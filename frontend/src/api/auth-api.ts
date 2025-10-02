@@ -13,13 +13,13 @@ export const login = async (username: string, password: string): Promise<String>
   return token;
 }
 
-export const register = async (username: string, password: string): Promise<string> => {
+export const register = async (name: string, lastname : string, email : string, password: string): Promise<string> => {
   const token = await fetch("https://localhost:3000/api/register", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify({ name, lastname, email, password }),
   });
   if (!token.ok) throw new Error("Registration failed");
   return token.text();

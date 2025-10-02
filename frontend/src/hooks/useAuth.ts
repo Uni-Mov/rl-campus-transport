@@ -22,10 +22,15 @@ export const useAuth = () => {
         setIsLoggedIn(false);
     }
 
-    const register = async (user: string, password: string) => {
-        const res = await api_register(user, password);
-        localStorage.setItem("authToken", res);
-        setIsLoggedIn(true);
+    const register = async (name: string, lastname : string, email: string, password: string): Promise<boolean> => {
+        try {
+            const res = await api_register(name, lastname, email, password);
+            localStorage.setItem("authToken", res);
+            setIsLoggedIn(true);
+            return true;
+        } catch (res) {
+           return false;
+        }
     }
     
     return { isLoggedIn, loading, login, logout, register };
