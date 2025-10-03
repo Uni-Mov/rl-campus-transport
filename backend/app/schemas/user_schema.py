@@ -1,17 +1,17 @@
-"""Schemas de validacion para los usuarios de la API."""
+"""Validation schemas for the API users."""
 
 from enum import Enum
 from pydantic import BaseModel, EmailStr
 
-# enum for role
+
 class UserRole(str, Enum):
-    """Enumeracion de roles posibles para los usuarios."""
+    """Enumeration of possible roles for users."""
     DRIVER = "driver"
     PASSENGER = "passenger"
 
-# schema to serialize/validate users
-class UserSchema(BaseModel): # pylint: disable=too-few-public-methods
-    """Schema para crear un usuario mediante la API."""
+
+class UserSchema(BaseModel):  # pylint: disable=too-few-public-methods
+    """Schema used to create or serialize a user through the API."""
     id: int
     first_name: str
     last_name: str
@@ -19,6 +19,6 @@ class UserSchema(BaseModel): # pylint: disable=too-few-public-methods
     email: EmailStr
     role: UserRole
 
-    class Config: # pylint: disable=too-few-public-methods
-        """COngiguracion interna para soportar SQLAlchemy ORM."""
-        orm_mode = True  # allows you to receive SQLAlchemy objects directly
+    class Config:  # pylint: disable=too-few-public-methods
+        """Internal configuration to support SQLAlchemy ORM integration."""
+        orm_mode = True  # allows reading SQLAlchemy model instances directly

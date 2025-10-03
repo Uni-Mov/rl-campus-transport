@@ -1,17 +1,21 @@
-"""Comentario"""
+""" 
+Defines the User model and roles for the application. 
+This module includes the SQLAlchemy ORM mapping for users, 
+with attributes such as name, DNI, email, password hash, and role. 
+"""
 import enum
 from sqlalchemy import Column, Integer, String, Enum
 from app.core.database import Base
 
 class UserRole(enum.Enum):
-    """Enumeracion de roles posibles para los usuarios."""
+    """Possible roles for users"""
     DRIVER = "driver"
     PASSENGER = "passenger"
 
 class User(Base):
-    """Representa un Usuario en la base de datos."""
+    """Represents a user in the database."""
 
-    __tablename__ = "users" #Esto es para probar Pylint #2
+    __tablename__ = "users" 
 
 
     id = Column(Integer, primary_key=True, index=True)
@@ -23,10 +27,11 @@ class User(Base):
     role = Column(Enum(UserRole), nullable=False)
 
     def full_name(self):
-        """Devuelve el Nombre Completo de usuario."""
+        """Returns the user's full name."""
         return f"{self.first_name} {self.last_name}"
 
-    def __repr__(self): #defines how an object is represented as a string
+    def __repr__(self):
+        """Defines how an object is represented as a string"""
         return (
             f"<User(id={self.id}, "
             f"name='{self.first_name} {self.last_name}', "
