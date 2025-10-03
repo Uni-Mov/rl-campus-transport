@@ -3,6 +3,7 @@
 from flask import Flask
 from flask_cors import CORS
 from app.api.users import bp as users_bp
+from app.core.database import create_tables  # import de función para crear tablas
 
 
 def create_app():
@@ -10,10 +11,15 @@ def create_app():
     
     - Enables CORS for all origins (development mode).
     - Registers blueprints with their respective URL prefixes.
+    - Creates all database tables.
     """
     app = Flask(__name__)
     CORS(app, origins="*")  # Allow all origins (use more restrictive config in production)
     app.register_blueprint(users_bp, url_prefix="/users")
+
+    # Crear tablas en la base de datos si no existen
+    create_tables()
+
     return app
 
 

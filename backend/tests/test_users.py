@@ -34,3 +34,15 @@ def test_user_schema_from_dict():
     assert user_schema.first_name == "Juan"
     assert user_schema.role == SchemaUserRole.PASSENGER
 
+def test_user_full_name():
+    """Check that the full_name() method returns correct full name"""
+    user = User(
+        id=1,
+        first_name="Ana",
+        last_name="Lopez",
+        dni="87654321",
+        email="ana@gmail.com",
+        password_hash="hashed_pw",
+        role=ORMUserRole.PASSENGER,
+    )
+    assert user.full_name() == "Ana Lopez"

@@ -1,6 +1,7 @@
 flask
 flask-cors
 pydantic # para validar datos (útil en schemas). Ahorra bugs al trabajar con JSON
+psycopg2-binary #version listas para usar del driver de PostgreSQL para python
 sqlalchemy # para bases de datos
 pytest
 pylint

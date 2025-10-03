@@ -72,9 +72,10 @@ backend/
 
 ### Tests 
 
-Para ejecutar los tests del backend, asegurate de estar en la carpeta `docker/` y ejecutar el siguiente comando:
+Para ejecutar los tests del backend, asegurate de estar en la carpeta `docker/` y ejecutar los siguientes comandos:
 
 ```bash
+sudo docker compose up -d db
 sudo docker compose run --rm backend pytest -v
 ```
 

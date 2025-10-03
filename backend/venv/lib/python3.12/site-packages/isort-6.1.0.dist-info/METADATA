@@ -1,8 +1,11 @@
 Metadata-Version: 2.4
 Name: isort
-Version: 6.0.1
+Version: 6.1.0
 Summary: A Python utility / library to sort Python imports.
-Project-URL: changelog, https://github.com/PyCQA/isort/releases
+Project-URL: Homepage, https://pycqa.github.io/isort/index.html
+Project-URL: Documentation, https://pycqa.github.io/isort/index.html
+Project-URL: Repository, https://github.com/PyCQA/isort
+Project-URL: Changelog, https://github.com/PyCQA/isort/releases
 Author-email: Timothy Crosley <timothy.crosley@gmail.com>, staticdev <staticdev-support@proton.me>
 License-Expression: MIT
 License-File: LICENSE
@@ -20,11 +23,13 @@ Classifier: Programming Language :: Python :: 3.10
 Classifier: Programming Language :: Python :: 3.11
 Classifier: Programming Language :: Python :: 3.12
 Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
 Classifier: Programming Language :: Python :: Implementation :: CPython
 Classifier: Programming Language :: Python :: Implementation :: PyPy
 Classifier: Topic :: Software Development :: Libraries
 Classifier: Topic :: Utilities
 Requires-Python: >=3.9.0
+Requires-Dist: importlib-metadata>=4.6.0; python_version < '3.10'
 Provides-Extra: colors
 Requires-Dist: colorama; extra == 'colors'
 Provides-Extra: plugins
@@ -36,15 +41,17 @@ Description-Content-Type: text/markdown
 ------------------------------------------------------------------------
 
 [![PyPI version](https://badge.fury.io/py/isort.svg)](https://badge.fury.io/py/isort)
+[![Python Version](https://img.shields.io/pypi/pyversions/isort)][pypi status]
 [![Test](https://github.com/PyCQA/isort/actions/workflows/test.yml/badge.svg)](https://github.com/PyCQA/isort/actions/workflows/test.yml)
 [![Lint](https://github.com/PyCQA/isort/actions/workflows/lint.yml/badge.svg)](https://github.com/PyCQA/isort/actions/workflows/lint.yml)
 [![Code coverage Status](https://codecov.io/gh/pycqa/isort/branch/main/graph/badge.svg)](https://codecov.io/gh/pycqa/isort)
 [![License](https://img.shields.io/github/license/mashape/apistatus.svg)](https://pypi.org/project/isort/)
-[![Join the chat at https://gitter.im/timothycrosley/isort](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/timothycrosley/isort?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Downloads](https://pepy.tech/badge/isort)](https://pepy.tech/project/isort)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat&labelColor=ef8336)](https://pycqa.github.io/isort/)
 [![DeepSource](https://static.deepsource.io/deepsource-badge-light-mini.svg)](https://deepsource.io/gh/pycqa/isort/?ref=repository-badge)
+
+[pypi status]: https://pypi.org/project/isort/
 _________________
 
 [Read Latest Documentation](https://pycqa.github.io/isort/) - [Browse GitHub Code Repository](https://github.com/pycqa/isort/)

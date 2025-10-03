@@ -1,4 +1,6 @@
-#!/home/hernanjara/Desktop/rl-campus-transport/backend/venv/bin/python3
+#!/bin/sh
+'''exec' "/home/alieniagus/Desktop/Computer's Science/3rd year/Proyecto/rl-campus-transport/backend/venv/bin/python3" "$0" "$@"
+' '''
 # -*- coding: utf-8 -*-
 import re
 import sys

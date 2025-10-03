@@ -15,7 +15,7 @@ class UserRole(enum.Enum):
 class User(Base):
     """Represents a user in the database."""
 
-    __tablename__ = "users" 
+    __tablename__ = "users"
 
 
     id = Column(Integer, primary_key=True, index=True)
