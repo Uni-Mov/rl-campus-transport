@@ -1,11 +1,12 @@
 import { createContext, useContext } from "react"
-import { useAuth as useAuthHook } from "../hooks/useAuth"
+import { useAuthMock as useAuthHook } from "../hooks/useAuthMock"
 
 type AuthContextType = {
   isLoggedIn: boolean;
   loading: boolean;
-  login: () => void;
+  login: (email : string, password: string) => void;
   logout: () => void;
+  register: (name: string, lastname: string, email: string, password: string) => void;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
