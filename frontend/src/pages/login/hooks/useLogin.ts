@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/context/auth-context";
+
 export const useLogin = () => {
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const navigate = useNavigate();
+  const { login } = useAuth();
   
   const validatePassword = (password: string): boolean => {
     if (password.length < 8) {
@@ -23,8 +24,11 @@ export const useLogin = () => {
       return;
     } 
     setError("");
-    // TODO : call api to login and navigate to home
-    navigate("/");
+    try {
+    login(email, password);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
   };
 
   return {showPassword, setShowPassword, validatePassword, handleSubmit, error };
