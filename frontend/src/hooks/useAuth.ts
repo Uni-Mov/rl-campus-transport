@@ -11,6 +11,7 @@ export const useAuth = () => {
     , []);
 
     const login = () => {
+        api_login("", "");
         const token = "hola soy un token";
         localStorage.setItem("authToken", token);
         setIsLoggedIn(true);
