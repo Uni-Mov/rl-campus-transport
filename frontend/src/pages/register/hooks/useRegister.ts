@@ -1,13 +1,11 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/context/auth-context";
 
 export const useRegister = () => {
 
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const navigate = useNavigate();
   const { register } = useAuth();
   
   const validatePassword = (password: string): boolean => {
@@ -30,19 +28,11 @@ export const useRegister = () => {
       return;
     }
     setError("");
-    register(name, lastname, email, password)
-    .then((success) => {
-    if (success) {
-      navigate("/login");
-    } else {
-      setError("An error occurred while registering");
+    try {
+      register(name, lastname, email, password);
+    } catch {
+      setError("failed in register");
     }
-   })
-  .catch((error) => {
-    console.error(error);
-    setError("An unexpected error occurred");
-  });
-
   };
 
   return {
