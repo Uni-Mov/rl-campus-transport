@@ -14,13 +14,11 @@ export default function Header() {
     setLanding(location.pathname === '/');
   }, [location]);
 
-  if (!auth) return null;
-
   const { isLoggedIn, login, logout } = auth;
   const buttons = [];
   
   if (isLoggedIn) {
-  buttons.push({ label: "Logout", onClick: logout, bg: "red-600" });
+  buttons.push({ label: "Logout", onClick: logout, bg: "primary" });
   } else {
   switch (location.pathname) {
     case "/login":
