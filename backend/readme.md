@@ -1,123 +1,278 @@
-# Backend - Estructura del proyecto
+# Backend - Estructura del Proyecto
 
-Este backend está desarrollado con **Python y Flask**, siguiendo un patrón modular que permite separar responsabilidades y mantener el código escalable y mantenible.
+Este backend está desarrollado con **Python y Flask**, siguiendo una **arquitectura modular** que separa responsabilidades en distintas capas: **API**, **servicios**, **repositorios**, **modelos** y **configuración del núcleo**.  
+Este enfoque facilita la **escalabilidad**, la **mantenibilidad** y la **realización de tests unitarios**.
 
-## Estructura de carpetas y archivos
+---
+
+## 🧱 Estructura de Carpetas
 
 ```text
 backend/
 ├── app/
-│ ├── api/
-│ ├── core/
-│ ├── main.py
-│ ├── models/
-│ ├── repositories/
-│ ├── schemas/
-│ └── services/
+│   ├── api/
+│   │   
+│   ├── core/
+│   │   
+│   ├── models/
+│   │   
+│   ├── repositories/
+│   │   
+│   ├── schemas/
+│   │   
+│   ├── services/
+│   │   
+│   └── main.py
 ├── requirements.txt
 └── tests/
 ```
 
-### Descripción de las carpetas y archivos principales
+---
 
-- **`app/`**: Contiene toda la lógica de la aplicación.
+## 📂 Descripción de Carpetas y Archivos Principales
 
-  - **`api/`**: Define los endpoints de la API. Por ejemplo, `users.py` maneja las rutas relacionadas con los usuarios.
-
-  - **`core/`**: Configuraciones y utilidades globales. 
-    Aquí se define `database.py`, que gestiona la entre Python conexión y la base de datos relacional. 
-    Aquí se define la clase Base = declarative_base(), que es la clase a partir de la cual se crean todos los modelos de la aplicación.
-    Esto es lo que une Python con las tablas SQL, ya que cualquier clase que herede de Base se convierte automáticamente en una tabla dentro de la base de datos.
-
-  - **`main.py`**: Punto de entrada de la aplicación. 
-    Inicializa Flask.
-    Habilita CORS para permitir solicitudes desde el frontend.
-    Registra los blueprints (módulos de endpoints).
-    Finalmente, arranca el servidor para que la API quede disponible.
-
-  - **`models/`**:Contiene las definiciones de los modelos de datos que representan las tablas en la base de datos. 
-    Cada modelo (ejemplo: User) hereda de Base (definida en core/database.py).
-    Se importa lo necesario para armar el modelo ORM: Column, Integer, String, Enum, etc.
-    Se definen enumeraciones (enum.Enum) para valores fijos como roles de usuario.
-    Los modelos incluyen métodos útiles como full_name() o __repr__() para representación y depuración.
-
-  - **`repositories/`**: Encapsula la lógica de acceso a los datos usando los modelos definidos en `models/`. 
-
-  - **`schemas/`**: Contiene los esquemas de validación de datos usando Pydantic.
-    Estos esquemas se usan para validar la información que llega en los requests (por ejemplo, cuando alguien manda un JSON al crear un usuario).
-    También sirven para serializar los datos que devolvemos en las respuestas de la API, asegurando que tengan el formato esperado (ejemplo: que el email sea válido).
-
-  - **`services/`**: Contiene la lógica de negocio de la aplicación, interactuando con los repositorios y realizando las operaciones necesarias.
-
-- **`requirements.txt`**: Lista las dependencias necesarias para ejecutar el proyecto:
-  - `Flask`: Framework web principal.
-  - `Pydantic`: Validación de datos y esquemas.
-  - `SQLAlchemy`: ORM para manejar la base de datos.
-  - `pytest`: Framework para pruebas.
-  - `pylint`: Herramienta de análisis de código.
-
-- **`tests/`**: Contiene pruebas unitarias y de integración para asegurar que los distintos componentes de la aplicación funcionen correctamente.
+### `app/`
+Contiene **toda la lógica del backend** y se organiza por capas.
 
 ---
 
-### Flujo general de la aplicación
+### `api/` — Endpoints de la API
 
-1. `main.py` inicia la aplicación Flask, configura la base de datos y registra los endpoints definidos en `api/`.
-2. Los **endpoints** reciben las solicitudes HTTP, validan los datos con los **schemas**, y llaman a los **servicios** correspondientes.
-3. Los **servicios** interactúan con los **repositorios**, que a su vez acceden a la **base de datos** a través de los **modelos**.
-4. Todo el acceso a la base de datos se gestiona desde `core/database.py`, asegurando conexiones seguras y consistentes.
-5. Los tests en `tests/` permiten verificar que los distintos módulos funcionen correctamente y que la API devuelva los resultados esperados.
+Archivo principal: `users.py`
+
+Define las rutas HTTP disponibles para interactuar con los usuarios.  
+Usa **Blueprints** para modularizar la API y separar responsabilidades por entidad.
+
+```python
+bp = Blueprint("users", __name__)
+```
+
+Ejemplo de endpoint:
+```python
+@bp.route("/", methods=["GET"])
+def list_users():
+    with SessionLocal() as session:
+        user_repository = UserRepository(session)
+        user_service = UserService(user_repository)
+        users = user_service.list_users()
+    return jsonify(users)
+```
+
+👉 Este endpoint obtiene todos los usuarios desde la base de datos.  
+Flask gestiona la solicitud, el servicio ejecuta la lógica y el repositorio accede a la base de datos.
+
+Otro ejemplo: obtener un usuario por ID
+```python
+@bp.route("/<int:user_id>", methods=["GET"])
+def get_user(user_id: int):
+    with SessionLocal() as session:
+        user_repository = UserRepository(session)
+        user_service = UserService(user_repository)
+        user = user_service.get_user(user_id)
+        if not user:
+            abort(404, description="User not found")
+    return jsonify(user)
+```
 
 ---
 
-### Tests 
+### `core/` — Configuración Global y Base de Datos
 
-Para ejecutar los tests del backend, asegurate de estar en la carpeta `docker/` y ejecutar los siguientes comandos:
+Archivo: `database.py`
+
+Este módulo **centraliza la conexión a la base de datos** mediante **SQLAlchemy**.
+
+Funciones y componentes clave:
+
+- `engine`: gestiona la conexión a la base de datos PostgreSQL.
+- `SessionLocal`: clase de sesión para realizar operaciones con la base de datos.
+- `Base`: clase base del ORM, a partir de la cual se definen los modelos.
+- `create_tables()`: crea las tablas automáticamente a partir de los modelos.
+
+---
+
+### `models/` — Modelos ORM
+
+Archivo: `user.py`
+
+Define el modelo `User`, que representa una tabla SQL llamada `users`.
+
+```python
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    first_name = Column(String(50), nullable=False)
+    last_name = Column(String(50), nullable=False)
+    dni = Column(String(10), unique=True, index=True, nullable=False)
+    email = Column(String(120), unique=True, index=True, nullable=False)
+    password_hash = Column(String(255), nullable=False)
+    role = Column(Enum(UserRole), nullable=False)
+```
+
+El modelo incluye métodos útiles:
+```python
+def full_name(self):
+    return f"{self.first_name} {self.last_name}"
+```
+
+Y una representación legible para depuración:
+```python
+def __repr__(self):
+    return f"<User(id={self.id}, name='{self.full_name()}', email='{self.email}', role='{self.role.name}')>"
+```
+
+---
+
+### `repositories/` — Acceso a Datos
+
+Archivo: `user_repository.py`
+
+El repositorio **encapsula la lógica de acceso a la base de datos**, evitando que el resto del sistema dependa directamente de SQLAlchemy.
+
+```python
+class UserRepository:
+    def __init__(self, db_session: Session):
+        self.db_session = db_session
+
+    def get_all(self):
+        return self.db_session.query(User).all()
+
+    def get_by_id(self, user_id: int):
+        return self.db_session.query(User).filter(User.id == user_id).first()
+```
+
+De esta forma, el repositorio actúa como intermediario entre la base de datos y la capa de servicio.
+
+---
+
+### `services/` — Lógica de Negocio
+
+Archivo: `user_service.py`
+
+Define la **lógica de negocio** asociada a los usuarios.  
+Aquí se definen las operaciones que combinan reglas de negocio, validaciones y acceso a datos.
+
+```python
+class UserService:
+    def list_users(self):
+        users = self.user_repository.get_all()
+        return [self._serialize(user) for user in users]
+
+    def get_user(self, user_id: int):
+        user = self.user_repository.get_by_id(user_id)
+        return self._serialize(user) if user else None
+```
+
+El método `_serialize()` convierte objetos del modelo en diccionarios JSON listos para enviar al frontend.
+
+---
+
+### `schemas/` — Validación y Serialización
+
+Archivo: `user_schema.py`
+
+Define **esquemas Pydantic** para validar y serializar datos.
+
+```python
+class UserSchema(BaseModel):
+    id: int
+    first_name: str
+    last_name: str
+    dni: str
+    email: EmailStr
+    role: UserRole
+
+    class Config:
+        orm_mode = True
+```
+
+Gracias a `orm_mode`, los modelos ORM de SQLAlchemy se pueden transformar fácilmente a esquemas Pydantic.
+
+---
+
+### `main.py` — Punto de Entrada del Backend
+
+Crea e inicializa la aplicación Flask, registra los endpoints y crea las tablas en la base de datos.
+
+```python
+def create_app():
+    app = Flask(__name__)
+    CORS(app, origins="*")
+    app.register_blueprint(users_bp, url_prefix="/users")
+    create_tables()
+    return app
+```
+
+Al ejecutarlo directamente, levanta el servidor en modo debug:
+```python
+if __name__ == "__main__":
+    application = create_app()
+    application.run(host="0.0.0.0", port=5000, debug=True)
+```
+
+---
+
+## 🔄 Flujo General de la Aplicación
+
+1. `main.py` inicia Flask y registra los endpoints.
+2. Las rutas de `api/users.py` reciben solicitudes HTTP.
+3. Los datos se validan con `schemas`.
+4. Los `services` aplican la lógica de negocio.
+5. Los `repositories` acceden a los `models` y la base de datos.
+6. Se devuelve una respuesta JSON al cliente.
+
+---
+
+## 🧪 Ejecución de Tests
+
+Para correr los tests dentro de Docker:
 
 ```bash
 sudo docker compose up -d db
 sudo docker compose run --rm backend pytest -v
 ```
 
-Detalles del comando:
-
-- Levanta un contenedor temporal del servicio `backend`.
-- Ejecuta todos los tests que se encuentran en `backend/tests/`.
-- Muestra los resultados en modo detallado (`-v` = verbose).
-- El contenedor temporal se elimina automáticamente al finalizar (`--rm`).
+Explicación:
+- Levanta un contenedor con la base de datos.
+- Ejecuta las pruebas del backend.
+- Muestra los resultados en modo detallado.
+- El contenedor temporal se elimina al finalizar.
 
 ---
 
-### Configuración de Pylint con pre-commit
+## 🧹 Configuración de Pylint con pre-commit
 
-Para asegurarnos de que todo el código cumpla con las reglas de estilo y buenas prácticas, configuramos **Pylint** con **pre-commit**.  
-De esta manera, cada vez que hagas un commit, el código se validará automáticamente.
+Para mantener el código limpio y coherente, usamos **pre-commit** para ejecutar Pylint antes de cada commit.
 
-##  Instrucciones para instalarlo en tu máquina
+### Instalación
 
-1. Entrar a la carpeta `backend`:
-   ```bash
-   cd backend
-   ```
+```bash
+cd backend
+source venv/bin/activate
+pip install -r requirements.txt
+pre-commit install
+```
 
-2. Activar el Entorno Virtual:
-   ```bash
-   source venv/bin/activate
-   ```
+Cada vez que ejecutes:
 
-3. Instalar las Dependencias del Proyecto:
-   ```bash
-   pip install -r requirements.txt
-   ```
+```bash
+git commit -m "mensaje"
+```
 
-4. Instalar los Hook de pre-commit:
-   ```bash
-   pre-commit install
-   ```
+Se correrá automáticamente Pylint sobre el código antes de confirmar los cambios.
 
-A partir de ahora, cada vez que hagas:
-   ```bash
-   git commit -m "mensaje"
-   ```
+---
 
-Automáticamente se ejecutará **Pylint** sobre el código de `backend/app`.
+## ⚙️ Tecnologías Utilizadas
+
+- **Flask** → Framework web principal.
+- **SQLAlchemy** → ORM para interactuar con PostgreSQL.
+- **Pydantic** → Validación de datos.
+- **pytest** → Testing automatizado.
+- **pylint** → Análisis estático del código.
+- **Docker Compose** → Orquestación de contenedores para entorno de desarrollo.
+
+---
+
+> 💡 Este diseño modular y desacoplado permite ampliar el backend fácilmente: 
+> se pueden agregar nuevas entidades repitiendo la misma estructura (`api`, `models`, `services`, `repositories`, `schemas`).
