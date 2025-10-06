@@ -1,7 +1,5 @@
-from gymnasium.envs.registration import register
+# ...existing code...
+# Expose WaypointNavigationEnv for easier imports
+from .waypoint_navigation import WaypointNavigationEnv
 
-# Registering the environment so that it can be imported as a module later
-register(
-    id="WaypointNavigationEnv-v0",  #Environment name
-    entry_point="envs.waypoint_navigation:WaypointNavigation",  # Environment path
-)
+__all__ = ["WaypointNavigationEnv"]
