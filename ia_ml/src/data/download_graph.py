@@ -1,10 +1,11 @@
 import os
 import osmnx as ox
 import networkx as nx
-from ia_ml.src.envs.waypoint_navigation import WaypointNavigationEnv  # o ajusta import según tu PYTHONPATH
+from ia_ml.src.envs.waypoint_navigation import WaypointNavigationEnv 
 
 
 def _configure_osmnx():
+    """Configures OSMnx to use cache and not log to console."""
     try:
         ox.config(use_cache=True, log_console=False)
     except AttributeError:
@@ -24,7 +25,6 @@ def download_and_save_graph(place_name: str, out_path: str):
 
 def load_graph_from_graphml(path: str) -> nx.MultiDiGraph:
     """Load a graph saved as GraphML (OSMnx format)."""
-    # Prefer ox.load_graphml for OSMnx-specific fields
     G = ox.load_graphml(path)
     return G
 
@@ -37,6 +37,7 @@ def relabel_nodes_to_indices(G: nx.Graph):
     return G_relabeled, node_to_idx, idx_to_node
 
 def example_create_env(place="Río Cuarto, Córdoba, Argentina"):
+    """Example of creating the WaypointNavigationEnv."""
     graph_path = "ia_ml/src/data/grafo_rio_cuarto.graphml"
     if not os.path.exists(graph_path):
         print("Descargando grafo...")
@@ -47,11 +48,10 @@ def example_create_env(place="Río Cuarto, Córdoba, Argentina"):
 
     G_idx, node_to_idx, idx_to_node = relabel_nodes_to_indices(G)
 
-    # Ejemplo: elegir waypoints y destino (puedes reemplazar por lógica propia)
     n_nodes = G_idx.number_of_nodes()
     if n_nodes < 3:
         raise RuntimeError("Grafo demasiado chico para ejemplo")
-    waypoints = [0, max(1, n_nodes // 2)]      # ejemplo simple
+    waypoints = [0, max(1, n_nodes // 2)]
     destination = n_nodes - 1
 
     env = WaypointNavigationEnv(G_idx, waypoints, destination)

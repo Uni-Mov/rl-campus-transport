@@ -1,6 +1,5 @@
-pytest -> Testing
-pylint -> Code review
-
+pytest 
+pylint 
 gymnasium
 networkx
 osmnx

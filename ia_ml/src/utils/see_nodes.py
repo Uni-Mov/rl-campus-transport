@@ -3,14 +3,16 @@ from pathlib import Path
 import osmnx as ox
 
 GRAPH_PATH = Path("ia_ml/src/data/grafo_rio_cuarto.graphml")
-SHOW_N = 5  # cuántos nodos/aristas mostrar
+SHOW_N = 5  # How many nodes/edges to show
 
 def load_graph(path: Path):
+    """Loads the downloaded graph from GraphML."""
     if not path.exists():
         raise FileNotFoundError(f"GraphML not found: {path}")
     return ox.load_graphml(str(path))
 
 def fmt_node(nid, attrs, G):
+    """Formats a node's info."""
     lat = attrs.get("y")
     lon = attrs.get("x")
     street_count = attrs.get("street_count")
@@ -21,6 +23,7 @@ def fmt_node(nid, attrs, G):
             f"   attrs: {keys}")
 
 def fmt_edge(u, v, key, attrs):
+    """Formats an edge's info."""
     length = attrs.get("length")
     highway = attrs.get("highway")
     lanes = attrs.get("lanes")
@@ -32,6 +35,7 @@ def fmt_edge(u, v, key, attrs):
             f"   length(m): {length}, highway: {highway}, lanes: {lanes}, maxspeed: {maxspeed}, oneway: {oneway}, osmid: {osmid}, geometry: {has_geom}")
 
 def show_neighbors_sample(G, nid, max_show=5):
+    """Shows a sample of neighbors for a node."""
     neigh = list(G.neighbors(nid))
     lines = []
     for nb in neigh[:max_show]:
@@ -41,6 +45,7 @@ def show_neighbors_sample(G, nid, max_show=5):
     return "\n".join(lines + ([more] if more else []))
 
 def main():
+    """Main function to load graph and display nodes and edges."""
     G = load_graph(GRAPH_PATH)
     print(f"Graph loaded: nodes={G.number_of_nodes()}, edges={G.number_of_edges()}\n")
 

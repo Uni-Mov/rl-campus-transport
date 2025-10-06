@@ -5,7 +5,7 @@ from geopy.extra.rate_limiter import RateLimiter
 import time
 
 GRAPH_PATH = Path("ia_ml/src/data/grafo_rio_cuarto.graphml")
-SAMPLE_N = 20  # cuántos nodos mostrar (o None para todos)
+SAMPLE_N = 20  # How many nodes to sample, or None for all
 
 def load_graph(path: Path):
     if not path.exists():
@@ -13,25 +13,22 @@ def load_graph(path: Path):
     return ox.load_graphml(str(path))
 
 def street_names_for_node(G, nid):
-    """Devuelve una lista única de nombres de vías incidentes al nodo."""
+    """Return a unique list of street names incident to the node."""
     names = set()
-    # G.edges(nid, data=True, keys=True) para MultiGraph con keys
     for u, v, k, attrs in G.edges(nid, keys=True, data=True):
         name = attrs.get("name")
         if not name:
             continue
-        # name puede ser str o lista; normalizar
         if isinstance(name, list):
             for n in name:
                 names.add(n)
         elif isinstance(name, str):
-            # OSM a veces usa ';' para múltiples nombres
             for part in name.split(";"):
                 names.add(part.strip())
     return sorted(names)
 
 def reverse_geocode(lat, lon, geolocator, rate_limiter):
-    """Intenta obtener la dirección (road, house_number) usando Nominatim."""
+    """Tries obtain the address (road, house_number) using Nominatim."""
     try:
         resp = rate_limiter((lat, lon), addressdetails=True)
         if resp is None:
@@ -51,7 +48,6 @@ def main():
     total = len(nodes)
     print(f"Graph loaded: nodes={total}, edges={G.number_of_edges()}\n")
 
-    # configurar geocoder (respeta políticas: user_agent y rate limiting)
     geolocator = Nominatim(user_agent="rl-campus-transport-utility")
     rate_limiter = RateLimiter(geolocator.reverse, min_delay_seconds=1.0, max_retries=2)
 

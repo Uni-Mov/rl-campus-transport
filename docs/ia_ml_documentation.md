@@ -10,6 +10,9 @@ This document describes the purpose, behavior, inputs, outputs, and usage of the
 
 ---
 
+## Important info
+Before running this ensure you have an envirnoment with the [requirements](/ia_ml/requirements.txt) installed
+
 ## ia_ml/src/data/download_graph.py
 
 Purpose
@@ -45,6 +48,12 @@ Notes and integration
 
 ---
 
+RUNNING THIS SCRIPT
+For run this script copy and paste this in an ACTIVE ENVIRONMENT in the root of the project
+```bash
+python3 -m ia_ml.src.data.download_graph
+```
+
 ## ia_ml/src/utils/see_nodes.py
 
 Purpose
@@ -73,6 +82,14 @@ Suggested improvements
 
 ---
 
+RUNNING THIS SCRIPT
+For run this script copy and paste this in an ACTIVE ENVIRONMENT in the root of the project
+```bash
+python3 -m ia_ml.src.utils.see_nodes
+```
+
+---
+
 ## ia_ml/src/utils/see_streets.py
 
 Purpose
@@ -97,3 +114,11 @@ Important considerations
   - Provide a clear `user_agent`.
   - Avoid bulk queries against the public endpoint; use local instance or paid service for large volumes.
   - Respect rate limits and caching.
+
+---
+
+RUNNING THIS SCRIPT
+For run this script copy and paste this in an ACTIVE ENVIRONMENT in the root of the project
+```bash
+PYTHONPATH=. python3 -m ia_ml.src.utils.see_streets
+```
