@@ -3,13 +3,6 @@ script de entrenamiento para navegacion con waypoints usando ppo.
 """
 import networkx as nx
 from stable_baselines3 import PPO
-import sys
-from pathlib import Path
-
-# agregar directorio raiz al path
-root_dir = Path(__file__).parent.parent.parent.parent
-sys.path.insert(0, str(root_dir))
-
 from ia_ml.src.envs.waypoint_navigation import WaypointNavigationEnv
 
 
