@@ -23,7 +23,7 @@ def main():
     
     # crear entorno
     # max_steps: limite de pasos para el episodio, usarlo en proporcion a la cantidad de nodos que haya
-    env = WaypointNavigationEnv(G, waypoints, destination, max_steps=15)
+    env = WaypointNavigationEnv(G, waypoints, destination, max_steps=30)
     
     # configurar modelo ppo
     # mlppolicy: red neuronal multicapa que recibe estado y devuelve accion
@@ -31,15 +31,15 @@ def main():
         "MlpPolicy", 
         env, 
         learning_rate=3e-4,      # que tan rapido aprende (0.0003)
-        clip_range=0.2,          # que tan drasticos son los cambios (limita actualizaciones)
-        ent_coef=0.01,           # cuanta exploracion hace (balance exploration/exploitation)
+        clip_range=0.3,          # que tan drasticos son los cambios (limita actualizaciones)
+        ent_coef=0.02,       # cuanta exploracion hace (balance exploration/exploitation)
         gamma=0.99,              # cuanto valora el futuro (descuento recompensas futuras)
         gae_lambda=0.95,         # como calcula si una accion fue buena (advantage estimation)
         verbose=1
     )
     
     # entrenar
-    model.learn(total_timesteps=50_000)
+    model.learn(total_timesteps=100_000)
     
     # guardar modelo
     model.save(f"ppo_waypoint_{grid_size}x{grid_size}")
