@@ -9,7 +9,7 @@ from ia_ml.src.envs.waypoint_navigation import WaypointNavigationEnv
 
 def main():
     # crear grafo 
-    grid_size = 10
+    grid_size = 5
     G = nx.grid_2d_graph(grid_size, grid_size)
     G = nx.convert_node_labels_to_integers(G)
     
@@ -24,7 +24,7 @@ def main():
     
     # crear entorno
     # max_steps: limite de pasos para el episodio, usarlo en proporcion a la cantidad de nodos que haya
-    env = WaypointNavigationEnv(G, waypoints, destination, max_steps=80)
+    env = WaypointNavigationEnv(G, waypoints, destination, max_steps=30)
     
     # configurar modelo ppo
     # mlppolicy: red neuronal multicapa que recibe estado y devuelve accion

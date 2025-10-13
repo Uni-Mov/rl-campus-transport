@@ -126,23 +126,6 @@ class WaypointNavigationEnv(gym.Env):
                 # misma distancia: no progresamos ni retrocedimos
                 reward = -1
             
-            # detectar ciclo
-            cycle_penalty = 0
-            
-            #  ventana deslizante
-            if len(self.path_history) >= 6:
-                recent = self.path_history[-3:]
-                previous = self.path_history[-6:-3]
-                if recent == previous:
-                    cycle_penalty = -50
-            
-            # contador de visitas
-            visit_count = self.path_history.count(self.current_node)
-            if visit_count > 3:
-                cycle_penalty = -20 * (visit_count - 3)
-            
-            reward += cycle_penalty
-            
             done = False
 
             # bonus por alcanzar waypoint
