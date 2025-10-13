@@ -69,8 +69,7 @@ class WaypointNavigationEnv(gym.Env):
     def reset(self, *, seed=None, options=None):
         """Reset the environment to initial state."""
         super().reset(seed=seed, options=options)
-        self.current_node = self.np_random.integers(
-            low=0, high=len(self.graph.nodes))
+        self.current_node = 0
         self.remaining_waypoints = self.waypoints.copy()
         self.steps_taken = 0
         
