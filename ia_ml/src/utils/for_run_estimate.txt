@@ -1,0 +1,1 @@
+python -m src.utils.estimate_training_time --timesteps 4500000 --grid-size 100 --max-steps 1000 --eval-freq 50000 --n-eval-episodes 3 --learning-rate 5e-5
