@@ -7,3 +7,4 @@ pytest
 pylint
 pre-commit
 pydantic[email]
+Werkzeug
