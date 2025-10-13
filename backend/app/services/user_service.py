@@ -1,5 +1,7 @@
 """Service layer for user-related operations."""
 
+from app.models.user import User, UserRole
+from werkzeug.security import generate_password_hash
 from app.repositories.user_repository import UserRepository
 
 class UserService:
@@ -30,3 +32,27 @@ class UserService:
             "email": user.email,
             "role": user.role.name
         }
+
+    def create_user(self, first_name, last_name, dni, email, password, role):
+        """Create and persist a new user."""
+        # validate role
+        if role not in UserRole._member_names_ and role not in [r.value for r in UserRole]:
+            raise ValueError("Invalid role")
+
+        # validate unique data
+        existing_users = self.user_repository.get_all()
+        if any(u.email == email for u in existing_users):
+            raise ValueError("Email already registered")
+        if any(u.dni == dni for u in existing_users):
+            raise ValueError("DNI already registered")
+
+        user = User(
+            first_name=first_name,
+            last_name=last_name,
+            dni=dni,
+            email=email,
+            password_hash=generate_password_hash(password),
+            role=UserRole(role) if isinstance(role, str) else role,
+        )
+
+        return self.user_repository.create(user)
