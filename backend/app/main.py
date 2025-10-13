@@ -16,8 +16,7 @@ def create_app():
     app = Flask(__name__)
     CORS(app, origins="*")  # Allow all origins (use more restrictive config in production)
     app.register_blueprint(users_bp, url_prefix="/users")
-
-    # Crear tablas en la base de datos si no existen
+    
     create_tables()
 
     return app
