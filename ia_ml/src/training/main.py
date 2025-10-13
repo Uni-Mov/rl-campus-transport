@@ -3,12 +3,13 @@ script de entrenamiento para navegacion con waypoints usando ppo.
 """
 import networkx as nx
 from stable_baselines3 import PPO
+from stable_baselines3.common.callbacks import EvalCallback, StopTrainingOnNoModelImprovement
 from ia_ml.src.envs.waypoint_navigation import WaypointNavigationEnv
 
 
 def main():
     # crear grafo 
-    grid_size = 5
+    grid_size = 10
     G = nx.grid_2d_graph(grid_size, grid_size)
     G = nx.convert_node_labels_to_integers(G)
     
@@ -23,7 +24,7 @@ def main():
     
     # crear entorno
     # max_steps: limite de pasos para el episodio, usarlo en proporcion a la cantidad de nodos que haya
-    env = WaypointNavigationEnv(G, waypoints, destination, max_steps=30)
+    env = WaypointNavigationEnv(G, waypoints, destination, max_steps=80)
     
     # configurar modelo ppo
     # mlppolicy: red neuronal multicapa que recibe estado y devuelve accion
@@ -31,21 +32,50 @@ def main():
         "MlpPolicy", 
         env, 
         learning_rate=3e-4,      # que tan rapido aprende (0.0003)
-        clip_range=0.3,          # que tan drasticos son los cambios (limita actualizaciones)
-        ent_coef=0.02,       # cuanta exploracion hace (balance exploration/exploitation)
+        clip_range=0.2,          # que tan drasticos son los cambios (limita actualizaciones)
+        ent_coef=0.05,       # cuanta exploracion hace (balance exploration/exploitation)
         gamma=0.99,              # cuanto valora el futuro (descuento recompensas futuras)
         gae_lambda=0.95,         # como calcula si una accion fue buena (advantage estimation)
         verbose=1
     )
     
-    # entrenar
-    model.learn(total_timesteps=100_000)
+    # crear entorno de evaluacion
+    eval_env = WaypointNavigationEnv(G, waypoints, destination, max_steps=30)
     
-    # guardar modelo
+    # callback para detener si no mejora
+    stop_callback = StopTrainingOnNoModelImprovement(
+        max_no_improvement_evals=10,  # detener si no mejora en 10 evaluaciones
+        min_evals=5,                  # minimo 5 evaluaciones antes de poder parar
+        verbose=1
+    )
+    
+    # callback de evaluacion (cada 5k steps)
+    eval_callback = EvalCallback(
+        eval_env,
+        best_model_save_path=f"./logs/best_model_{grid_size}x{grid_size}/",
+        log_path=f"./logs/results_{grid_size}x{grid_size}/",
+        eval_freq=5_000,              # evaluar cada 5k steps
+        n_eval_episodes=5,            # 5 episodios por evaluacion
+        deterministic=True,
+        callback_after_eval=stop_callback,
+        verbose=1
+    )
+    
+    # entrenar
+    model.learn(total_timesteps=200_000, callback=eval_callback)
+    
+    # cargar mejor modelo encontrado
+    print("\n" + "="*60)
+    print("cargando mejor modelo")
+    print("="*60)
+    best_model_path = f"./logs/best_model_{grid_size}x{grid_size}/best_model"
+    model = PPO.load(best_model_path, env=env)
+    
+    # guardar modelo final
     model.save(f"ppo_waypoint_{grid_size}x{grid_size}")
     
     # probar modelo
-    print("="*60)
+    print("\n" + "="*60)
     print("prueba del modelo")
     print("="*60)
     
