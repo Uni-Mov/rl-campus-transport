@@ -4,7 +4,7 @@ script de entrenamiento para navegacion con waypoints usando ppo.
 import networkx as nx
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import EvalCallback, StopTrainingOnNoModelImprovement
-from ia_ml.src.envs.waypoint_navigation import WaypointNavigationEnv
+from src.envs.waypoint_navigation import WaypointNavigationEnv
 
 
 def main():
