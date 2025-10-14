@@ -263,6 +263,122 @@ Se correrá automáticamente Pylint sobre el código antes de confirmar los camb
 
 ---
 
+# 🚀 Ejecución y Pruebas Locales
+
+Para levantar el entorno de desarrollo completo y probar la API, sigue estos pasos desde tu terminal.
+
+---
+
+## 1. 🐳 Iniciar el Entorno con Docker
+
+Estos comandos aseguran que inicies desde un estado limpio y consistente.
+
+### 🔹 Limpiar entorno previo (opcional pero recomendado)
+
+```bash
+# Navega a la carpeta que contiene tu docker-compose.yml
+cd docker/
+sudo docker-compose down -v
+```
+
+> Este comando detiene y elimina cualquier contenedor, red o volumen previo.  
+> La bandera `-v` es crucial porque borra la base de datos, asegurando que partimos de un estado **100% limpio**.
+
+### 🔹 Reconstruir las imágenes
+
+```bash
+sudo docker-compose build --no-cache
+```
+
+> Reconstruye las imágenes de Docker desde cero, ignorando la caché.  
+> Es útil para evitar problemas con capas corruptas si se modifico el `Dockerfile` o el código fuente.
+
+### 🔹 Levantar los servicios
+
+```bash
+sudo docker-compose up
+```
+
+> Levanta todos los servicios (**backend, base de datos**, etc.) y muestra sus logs en tiempo real en la terminal.
+
+---
+
+## 2. 🧪 Probar la API
+
+Una vez que los contenedores estén corriendo, puedes probar los endpoints.
+
+### 🧩 Probando Endpoints GET (con el Navegador)
+
+**Listar todos los usuarios (`GET /users/`):**
+
+Abre tu navegador y ve a:
+```
+http://localhost:5000/users/
+```
+
+Resultado esperado: Verás una lista JSON `[]` con todos los usuarios de la base de datos.
+
+**Obtener un usuario específico (`GET /users/<id>`):**
+
+En el navegador, ve a:
+```
+http://localhost:5000/users/1
+```
+
+Resultado esperado: Verás un objeto JSON con los datos del usuario con ID `1`.  
+Si no existe, recibirás un error **404**.
+
+---
+
+### ✉️ Probando Endpoints POST (con Postman)
+
+1. Crea una cuenta en **Postman** si aún no la tienes.  
+2. Crea una nueva petición y selecciona el método **POST**.  
+3. Introduce la URL:
+   ```
+   http://localhost:5000/users/
+   ```
+4. Ve a la pestaña **Body**, selecciona la opción **raw** y asegúrate de que el formato sea **JSON**.  
+5. Pega el siguiente objeto en el área de texto:
+
+```json
+{
+    "first_name": "Ana",
+    "last_name": "García",
+    "dni": "98765432",
+    "email": "ana.garcia@example.com",
+    "password": "unpasswordmuyseguro123",
+    "role": "driver"
+}
+```
+
+6. Haz clic en **Send**.
+
+> ⚠️ **Importante:** La primera vez, Postman te pedirá que descargues e instales el **Desktop Agent**.  
+> Esto es necesario porque tu API se está ejecutando localmente (`localhost`) y el agente de escritorio permite que Postman pueda acceder a ella desde tu propia máquina.
+
+---
+
+## 3. 💾 Persistencia de Datos y Ciclo de Vida
+
+- **Para detener los servicios:**  
+  Ve a la terminal donde se está ejecutando `docker-compose up` y presiona **Ctrl + C**.
+
+- **Los datos persisten:**  
+  Si después de detenerlo vuelves a ejecutar `sudo docker-compose up`, notarás que los usuarios que creaste con POST siguen ahí.  
+  Esto ocurre porque Docker **no elimina el volumen de la base de datos** a menos que se lo indiques.
+
+- **Para borrar todos los datos:**  
+  Si quieres empezar de cero, usa:
+
+  ```bash
+  sudo docker-compose down -v
+  ```
+
+  La próxima vez que inicies, la base de datos estará completamente vacía.
+
+---
+
 ## ⚙️ Tecnologías Utilizadas
 
 - **Flask** → Framework web principal.
