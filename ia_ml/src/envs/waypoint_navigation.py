@@ -35,6 +35,10 @@ class WaypointNavigationEnv(gym.Env):
         # guardar camino tomado
         self.path_history = []
         
+        # variables para detección de ciclos
+        self.recent_nodes = []
+        self.visit_counter = {}
+        
         # precalcular distancias shortest path entre todos los nodos
         self.shortest_paths = dict(nx.all_pairs_shortest_path_length(graph))
 
@@ -75,6 +79,10 @@ class WaypointNavigationEnv(gym.Env):
         
         # inicializar historial con nodo de inicio
         self.path_history = [self.current_node]
+        
+        # reinicializar variables para detección de ciclos
+        self.recent_nodes = [self.current_node]
+        self.visit_counter = {self.current_node: 1}
 
         obs = np.array([
             self.current_node,
@@ -88,65 +96,75 @@ class WaypointNavigationEnv(gym.Env):
         neighbors = list(self.graph.neighbors(self.current_node))
         
         # determinar siguiente objetivo (waypoint o destino)
-        next_target = (self.remaining_waypoints[0] if self.remaining_waypoints 
-                      else self.destination)
+        next_target = self.remaining_waypoints[0] if self.remaining_waypoints else self.destination
         
         # calcular distancia ANTES del movimiento
         dist_before = self._get_distance(self.current_node, next_target)
 
+        # acción inválida
         if action >= len(neighbors):
-            # accion invalida -> penalizacion fuerte
             reward = -10
             done = False
             truncated = self.steps_taken >= self.max_steps
-            
             obs = np.array([
                 self.current_node,
-                self.remaining_waypoints[0] if self.remaining_waypoints else self.destination,
-                self.destination], dtype=np.int32)
-            
-            return obs, reward, done, truncated, {"path": self.path_history.copy()}
+                next_target,
+                self.destination
+            ], dtype=np.int32)
+            info = {"path": self.path_history.copy()}
+            return obs, reward, done, truncated, info
+
+        # mover al vecino seleccionado
+        self.current_node = neighbors[action]
+        self.path_history.append(self.current_node)
+
+        # actualizar ventana y contador para penalizaciones
+        self.recent_nodes.append(self.current_node)
+        self.visit_counter[self.current_node] += 1
+
+        # calcular penalizaciones por ciclos
+        cycle_penalty = 0
+        if len(self.recent_nodes) == 6:
+            recent = list(self.recent_nodes)[-3:]
+            previous = list(self.recent_nodes)[:3]
+            if recent == previous:
+                cycle_penalty = -50
+
+        visit_count = self.visit_counter[self.current_node]
+        if visit_count > 3:
+            cycle_penalty = max(cycle_penalty, -20 * (visit_count - 3))
+
+        # calcular distancia DESPUÉS del movimiento y recompensa base
+        dist_after = self._get_distance(self.current_node, next_target)
+        if dist_after < dist_before:
+            reward = 0
+        elif dist_after > dist_before:
+            reward = -2
         else:
-            # mover al vecino seleccionado
-            self.current_node = neighbors[action]
-            self.path_history.append(self.current_node)
-            
-            # calcular distancia despues del movimiento
-            dist_after = self._get_distance(self.current_node, next_target)
-           
-            # comparar distancias para saber si progresamos
-            if dist_after < dist_before:
-                # nos acercamos: distancia disminuyo
-                # dar recompensa neutral (0) porque vamos bien
-                reward = 0
-            elif dist_after > dist_before:
-                # penalizacion por ir en direccion incorrecta
-                reward = -2
-            else:
-                # misma distancia: no progresamos ni retrocedimos
-                reward = -1
-            
-            done = False
+            reward = -1
 
-            # bonus por alcanzar waypoint
-            if self.remaining_waypoints and self.current_node == self.remaining_waypoints[0]:
-                reward = +100
-                self.remaining_waypoints.pop(0)
+        reward += cycle_penalty
 
-            # bonus grande por alcanzar destino
-            if not self.remaining_waypoints and self.current_node == self.destination:
-                reward = +1000
-                done = True
+        # bonus por alcanzar waypoint
+        if self.remaining_waypoints and self.current_node == self.remaining_waypoints[0]:
+            reward = 100
+            self.remaining_waypoints.pop(0)
 
-        # verificar truncation (limite de pasos)
+        # bonus por alcanzar destino final
+        done = False
+        if not self.remaining_waypoints and self.current_node == self.destination:
+            reward = 1000
+            done = True
+
+        # truncamiento por pasos máximos
         truncated = self.steps_taken >= self.max_steps
-        
+
         obs = np.array([
             self.current_node,
             self.remaining_waypoints[0] if self.remaining_waypoints else self.destination,
-            self.destination], dtype=np.int32)
-        
-        # retornar camino en info para poder accederlo
+            self.destination
+        ], dtype=np.int32)
+
         info = {"path": self.path_history.copy()}
 
         return obs, reward, done, truncated, info
