@@ -1,6 +1,6 @@
 """API endpoints for user-related operations."""
 
-from flask import Blueprint, jsonify, abort
+from flask import Blueprint, jsonify, abort, request
 from app.core.database import SessionLocal
 from app.repositories.user_repository import UserRepository
 from app.services.user_service import UserService
