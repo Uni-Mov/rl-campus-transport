@@ -4,6 +4,7 @@ Waypoint Navigation Environment for Reinforcement Learning.
 This module implements a custom Gymnasium environment for graph-based navigation
 with waypoints using NetworkX graphs.
 """
+from collections import deque, defaultdict
 import gymnasium as gym
 from gymnasium import spaces
 import networkx as nx
@@ -36,8 +37,8 @@ class WaypointNavigationEnv(gym.Env):
         self.path_history = []
         
         # variables para detección de ciclos
-        self.recent_nodes = []
-        self.visit_counter = {}
+        self.recent_nodes = deque(maxlen=6)  # ventana deslizante de 6 nodos
+        self.visit_counter = defaultdict(int)  # contador de visitas por nodo
         
         # precalcular distancias shortest path entre todos los nodos
         self.shortest_paths = dict(nx.all_pairs_shortest_path_length(graph))
@@ -81,8 +82,9 @@ class WaypointNavigationEnv(gym.Env):
         self.path_history = [self.current_node]
         
         # reinicializar variables para detección de ciclos
-        self.recent_nodes = [self.current_node]
-        self.visit_counter = {self.current_node: 1}
+        self.recent_nodes = deque([self.current_node], maxlen=6)
+        self.visit_counter = defaultdict(int)
+        self.visit_counter[self.current_node] = 1
 
         obs = np.array([
             self.current_node,
