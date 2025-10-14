@@ -36,6 +36,19 @@ def relabel_nodes_to_indices(G: nx.Graph):
     G_relabeled = nx.relabel_nodes(G, node_to_idx, copy=True)
     return G_relabeled, node_to_idx, idx_to_node
 
+def get_graph_relabel(locality: str):
+
+    safe_name = locality.replace(",", "").replace(" ", "_")
+    graph_path = f"ia_ml/src/data/{safe_name}.graphml"
+
+    if not os.path.exists(graph_path):
+        G = download_and_save_graph(locality, graph_path)
+    else:
+        G = load_graph_from_graphml(graph_path)
+
+    G_relabel, node_to_idx, idx_to_node = relabel_nodes_to_indices(G)
+    return G_relabel, node_to_idx, idx_to_node
+
 def example_create_env(place="Río Cuarto, Córdoba, Argentina"):
     """Example of creating the WaypointNavigationEnv."""
     graph_path = "ia_ml/src/data/grafo_rio_cuarto.graphml"
