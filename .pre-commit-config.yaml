@@ -6,3 +6,4 @@ repos:
         entry: bash -c "PYTHONPATH=$PWD/backend pylint backend/app/"
         language: system
         types: [python]
+        args: ['--fail-under=8']
