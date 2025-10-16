@@ -49,7 +49,7 @@ class WaypointNavigationEnv(gym.Env):
         # Store render_mode to avoid unused-argument warning
         self.render_mode = render_mode
     
-    def get_distance(self, node1, node2):
+    def _get_distance(self, node1, node2):
         """
         obtiene la distancia shortest path entre dos nodos.
         
@@ -129,20 +129,19 @@ class WaypointNavigationEnv(gym.Env):
         """Execute one step in the environment."""
         self.steps_taken += 1
         
-        # determinar siguiente objetivo (waypoint o destino)
         next_target = self.remaining_waypoints[0] if self.remaining_waypoints else self.destination
         
         # calcular distancia ANTES del movimiento
-        dist_before = self.get_distance(self.current_node, next_target)
+        distance_before = self._get_distance(self.current_node, next_target)
 
         # ejecutar movimiento
         self._execute_movement(action)
 
         # calcular distancia DESPUÉS del movimiento
-        dist_after = self.get_distance(self.current_node, next_target)
+        distance_after = self._get_distance(self.current_node, next_target)
         
         # calcular recompensa total
-        reward = self._calculate_base_reward(dist_before, dist_after)
+        reward = self._calculate_base_reward(distance_before, distance_after)
         reward += self._check_waypoint_reached()
         
         # verificar si se alcanzó el destino final
