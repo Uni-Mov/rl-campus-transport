@@ -4,7 +4,11 @@ script de entrenamiento para navegacion con waypoints usando ppo.
 import networkx as nx
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import EvalCallback, StopTrainingOnNoModelImprovement
-from src.envs.waypoint_navigation import WaypointNavigationEnv
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+
+from src.envs import WaypointNavigationEnv, create_masked_waypoint_env
 
 
 def main():
@@ -24,7 +28,7 @@ def main():
     
     # crear entorno
     # max_steps: limite de pasos para el episodio, usarlo en proporcion a la cantidad de nodos que haya
-    env = WaypointNavigationEnv(G, waypoints, destination, max_steps=30)
+    env = create_masked_waypoint_env(G, waypoints, destination, max_steps=30)
     
     # configurar modelo ppo
     # mlppolicy: red neuronal multicapa que recibe estado y devuelve accion
@@ -39,8 +43,8 @@ def main():
         verbose=1
     )
     
-    # crear entorno de evaluacion
-    eval_env = WaypointNavigationEnv(G, waypoints, destination, max_steps=30)
+    # crear entorno de evaluacion con masking real
+    eval_env = create_masked_waypoint_env(G, waypoints, destination, max_steps=30)
     
     # callback para detener si no mejora
     stop_callback = StopTrainingOnNoModelImprovement(
@@ -62,7 +66,7 @@ def main():
     )
     
     # entrenar
-    model.learn(total_timesteps=200_000, callback=eval_callback)
+    model.learn(total_timesteps=200_000, callback=eval_callback, progress_bar=True)
     
     # cargar mejor modelo encontrado
     print("\n" + "="*60)
