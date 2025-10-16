@@ -2,7 +2,7 @@
 Waypoint Navigation Environment for Reinforcement Learning.
 
 This module implements a custom Gymnasium environment for graph-based navigation
-with waypoints using NetworkX graphs.
+with waypoints using NetworkX graphs with proper action masking to prevent invalid actions and cycles.
 """
 from collections import deque, defaultdict
 import gymnasium as gym
@@ -36,10 +36,6 @@ class WaypointNavigationEnv(gym.Env):
         # guardar camino tomado
         self.path_history = []
         
-        # variables para detección de ciclos
-        self.recent_nodes = deque(maxlen=6)  # ventana deslizante de 6 nodos
-        self.visit_counter = defaultdict(int)  # contador de visitas por nodo
-        
         # precalcular distancias shortest path entre todos los nodos
         self.shortest_paths = dict(nx.all_pairs_shortest_path_length(graph))
 
@@ -48,8 +44,15 @@ class WaypointNavigationEnv(gym.Env):
         self.observation_space = spaces.Box(low=0, high=len(graph.nodes),
                                           shape=(3,), dtype=np.int32)
 
-        # Action = choose neighbor
-        self.action_space = spaces.Discrete(10)
+        # Action space dinámico basado en el grado máximo del grafo
+        max_degree = max(dict(graph.degree()).values()) if graph.number_of_nodes() > 0 else 1
+        self.max_actions = max_degree
+        
+        # Action = choose neighbor (espacio dinámico)
+        self.action_space = spaces.Discrete(self.max_actions)
+        
+        # Action masking para evitar acciones inválidas
+        self.action_mask = np.ones(self.max_actions, dtype=bool)  # máscara de acciones válidas
 
         # Store render_mode to avoid unused-argument warning
         self.render_mode = render_mode
@@ -70,6 +73,25 @@ class WaypointNavigationEnv(gym.Env):
         except KeyError:
             # si no hay camino, retornar distancia muy grande
             return len(self.graph.nodes)
+    
+    def _update_action_mask(self):
+        """
+        Actualiza la máscara de acciones para evitar acciones inválidas.
+        """
+        neighbors = list(self.graph.neighbors(self.current_node))
+        
+        # Inicializar máscara como False (todas las acciones inválidas por defecto)
+        self.action_mask.fill(False)
+        
+        # Marcar como válidas solo las acciones que van a vecinos válidos
+        for i, neighbor in enumerate(neighbors):
+            if i < self.max_actions:  # Solo considerar las acciones disponibles
+                self.action_mask[i] = True
+        
+        # Si no hay acciones válidas, permitir al menos una acción para evitar deadlock
+        if not np.any(self.action_mask) and neighbors:
+            # Permitir la primera acción disponible
+            self.action_mask[0] = True
 
     def reset(self, *, seed=None, options=None):
         """Reset the environment to initial state."""
@@ -81,10 +103,8 @@ class WaypointNavigationEnv(gym.Env):
         # inicializar historial con nodo de inicio
         self.path_history = [self.current_node]
         
-        # reinicializar variables para detección de ciclos
-        self.recent_nodes = deque([self.current_node], maxlen=6)
-        self.visit_counter = defaultdict(int)
-        self.visit_counter[self.current_node] = 1
+        # actualizar máscara de acciones
+        self._update_action_mask()
 
         obs = np.array([
             self.current_node,
@@ -103,8 +123,8 @@ class WaypointNavigationEnv(gym.Env):
         # calcular distancia ANTES del movimiento
         dist_before = self._get_distance(self.current_node, next_target)
 
-        # acción inválida
-        if action >= len(neighbors):
+        # verificar si la acción es válida usando la máscara
+        if not self.action_mask[action] or action >= len(neighbors):
             reward = -10
             done = False
             truncated = self.steps_taken >= self.max_steps
@@ -113,28 +133,15 @@ class WaypointNavigationEnv(gym.Env):
                 next_target,
                 self.destination
             ], dtype=np.int32)
-            info = {"path": self.path_history.copy()}
+            info = {
+                "path": self.path_history.copy(),
+                "action_mask": self.action_mask.copy()
+            }
             return obs, reward, done, truncated, info
 
         # mover al vecino seleccionado
         self.current_node = neighbors[action]
         self.path_history.append(self.current_node)
-
-        # actualizar ventana y contador para penalizaciones
-        self.recent_nodes.append(self.current_node)
-        self.visit_counter[self.current_node] += 1
-
-        # calcular penalizaciones por ciclos
-        cycle_penalty = 0
-        if len(self.recent_nodes) == 6:
-            recent = list(self.recent_nodes)[-3:]
-            previous = list(self.recent_nodes)[:3]
-            if recent == previous:
-                cycle_penalty = -50
-
-        visit_count = self.visit_counter[self.current_node]
-        if visit_count > 3:
-            cycle_penalty = max(cycle_penalty, -20 * (visit_count - 3))
 
         # calcular distancia DESPUÉS del movimiento y recompensa base
         dist_after = self._get_distance(self.current_node, next_target)
@@ -144,8 +151,6 @@ class WaypointNavigationEnv(gym.Env):
             reward = -2
         else:
             reward = -1
-
-        reward += cycle_penalty
 
         # bonus por alcanzar waypoint
         if self.remaining_waypoints and self.current_node == self.remaining_waypoints[0]:
@@ -161,17 +166,44 @@ class WaypointNavigationEnv(gym.Env):
         # truncamiento por pasos máximos
         truncated = self.steps_taken >= self.max_steps
 
+        # actualizar máscara de acciones para el siguiente paso
+        self._update_action_mask()
+
         obs = np.array([
             self.current_node,
             self.remaining_waypoints[0] if self.remaining_waypoints else self.destination,
             self.destination
         ], dtype=np.int32)
 
-        info = {"path": self.path_history.copy()}
+        info = {
+            "path": self.path_history.copy(),
+            "action_mask": self.action_mask.copy()
+        }
 
         return obs, reward, done, truncated, info
 
+    def get_action_mask(self):
+        """
+        Retorna la máscara de acciones actual.
+        
+        Returns:
+            np.ndarray: Array booleano indicando qué acciones son válidas
+        """
+        return self.action_mask.copy()
+    
+    def get_valid_actions(self):
+        """
+        Retorna una lista de acciones válidas basada en la máscara.
+        
+        Returns:
+            list: Lista de índices de acciones válidas
+        """
+        return [i for i, valid in enumerate(self.action_mask) if valid]
+    
     def render(self):
         """Render the current state of the environment."""
+        valid_actions = self.get_valid_actions()
         print(f"Current node: {self.current_node}, "
-              f"Remaining waypoints: {self.remaining_waypoints}")
+              f"Remaining waypoints: {self.remaining_waypoints}, "
+              f"Valid actions: {valid_actions}")
+
