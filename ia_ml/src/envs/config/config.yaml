@@ -1,0 +1,14 @@
+environment:
+  start_node: auto
+  max_steps: auto
+  max_wait_steps: auto
+  render_mode: "human"
+
+rewards:
+  weight_name: "travel_time"
+  anti_loop_penalty: 20.0
+  move_cost_coef: 0.01
+  progress_coef: 5.0
+  waypoint_bonus: 50.0
+  destination_bonus: 200.0
+  no_progress_penalty: 2.0
