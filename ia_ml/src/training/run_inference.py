@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+from pathlib import Path
 from typing import Dict, List, Optional
 
 import numpy as np
@@ -13,9 +14,10 @@ from stable_baselines3 import PPO
 # Habilitar imports relativos cuando se ejecuta como script
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from src.envs import create_masked_waypoint_env  # noqa: E402
-from src.data.download_graph import get_graph_relabel  # noqa: E402
-from src.training.main import build_node_embeddings  # noqa: E402
+from src.envs import create_masked_waypoint_env 
+from src.data.download_graph import get_graph_relabel  
+from src.training.main import build_node_embeddings  
+from src.utils.config_loader import load_config 
 
 
 def parse_args() -> argparse.Namespace:
@@ -62,21 +64,10 @@ def run_episode(
 
     node_embeddings = build_node_embeddings(graph)
 
-    env_kwargs = dict(
-        node_embeddings=node_embeddings,
-        start_node=start,
-        max_steps=max_steps,
-        weight_name="travel_time",
-        anti_loop_penalty=20.0,
-        move_cost_coef=0.01,
-        progress_coef=5.0,
-        waypoint_bonus=50.0,
-        destination_bonus=200.0,
-        no_progress_penalty=2.0,
-        max_wait_steps=None,
-    )
-
-    env = create_masked_waypoint_env(graph, waypoints, destination, **env_kwargs)
+    CONFIG_PATH = Path(__file__).resolve().parents[1] / "envs" / "config" / "config.yaml"
+    cfg = load_config(CONFIG_PATH)
+    environment_cfg, rewards_cfg = cfg["environment"], cfg["rewards"]
+    env = create_masked_waypoint_env(graph, waypoints, destination, environment_cfg, rewards_cfg)
 
     if not os.path.exists(model_path):
         raise FileNotFoundError(f"No se encontro el modelo en {model_path}")
@@ -123,7 +114,8 @@ def run_episode(
         "steps": steps,
         "total_reward": total_reward,
         "info": info,
-        "env_kwargs": env_kwargs,
+        "environment_cfg": environment_cfg,
+        "rewards_cfg": rewards_cfg,
         "graph": graph,
         "node_to_idx": node_to_idx,
         "idx_to_node": idx_to_node,
