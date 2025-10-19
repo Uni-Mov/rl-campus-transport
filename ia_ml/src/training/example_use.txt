@@ -1,0 +1,2 @@
+comando para probar:
+python plot_route.py --place "Guatimozin, Córdoba, Argentina" --model-path ppo_waypoint_masked.zip --start 0 --destination 60 --waypoints 2 13 15 20 --max-steps 120 --deterministic --compare --output recorrido --plot-graph
