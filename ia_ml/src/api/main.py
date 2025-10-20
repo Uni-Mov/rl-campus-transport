@@ -1,11 +1,17 @@
 # ia_ml/api/main.py
 
+import sys
 from pathlib import Path
 from typing import Dict, List, Optional
 import os
 
-from src.training.run_inference import run_episode
-from src.data.download_graph import get_graph_relabel
+# Add repo root to sys.path so ia_ml package is importable
+repo_root = Path(__file__).resolve().parents[3]
+if str(repo_root) not in sys.path:
+    sys.path.insert(0, str(repo_root))
+
+from ia_ml.src.training.run_inference import run_episode
+from ia_ml.src.data.download_graph import get_graph_relabel
 
 
 def find_ai_route(

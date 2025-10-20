@@ -5,5 +5,5 @@ networkx
 osmnx
 numpy
 stable-baselines3
-torch
+sb3-contrib
 geopy
