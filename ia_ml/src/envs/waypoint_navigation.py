@@ -2,9 +2,8 @@
 Waypoint Navigation Environment for Reinforcement Learning.
 
 This module implements a custom Gymnasium environment for graph-based navigation
-with waypoints using NetworkX graphs with proper action masking to prevent invalid actions and cycles.
+with waypoints using NetworkX graphs.
 """
-from collections import deque, defaultdict
 import gymnasium as gym
 from gymnasium import spaces
 import networkx as nx
@@ -21,148 +20,93 @@ class WaypointNavigationEnv(gym.Env):
     """
     meta = {"render_modes": ["human"]}  # Supported render modes
 
-    def __init__(self, graph: nx.Graph, waypoints: list, destination: int, 
-                 max_steps=20, render_mode=None):
+    def __init__(self, graph: nx.Graph, waypoints: list, destination: int, render_mode=None):
         super().__init__()
 
         self.graph = graph
         self.waypoints = waypoints.copy()
         self.destination = destination
-        self.max_steps = max_steps
         self.current_node = None
         self.remaining_waypoints = []
-        self.steps_taken = 0
-        self.path_history = []
-        
-        # precalcular distancias shortest path entre todos los nodos
-        self.shortest_paths = dict(nx.all_pairs_shortest_path_length(graph))
-        self.observation_space = spaces.Box(low=0, high=len(graph.nodes),
-                                          shape=(3,), dtype=np.int32)
 
-        # Action space dinámico basado en el grado máximo del grafo
-        max_degree = max(dict(graph.degree()).values()) if graph.number_of_nodes() > 0 else 1
-        self.max_actions = max_degree
-        
-        # Action = choose neighbor (espacio dinámico)
-        self.action_space = spaces.Discrete(self.max_actions)
+        # Observation Space https://gymnasium.farama.org/api/spaces/
+        # Observation vector = [current_node, current_waypoint, destination]
+        self.observation_space = spaces.Box(low=0, high=len(graph.nodes),
+                                            shape=(3,), dtype=np.int32)
+
+        # Compute maximum node degree once to define a fixed-size action space
+        # and to build action masks for valid neighbor choices at each step.
+        degrees = dict(self.graph.degree())
+        self._max_degree = max(degrees.values()) if degrees else 1
+
+        # Action = choose neighbor (index into sorted neighbors list)
+        self.action_space = spaces.Discrete(self._max_degree)
 
         # Store render_mode to avoid unused-argument warning
         self.render_mode = render_mode
-    
-    def _get_distance(self, node1, node2):
-        """
-        obtiene la distancia shortest path entre dos nodos.
-        
-        parametros:
-            node1: nodo origen
-            node2: nodo destino
-            
-        retorna:
-            int: numero de pasos del camino mas corto
-        """
-        try:
-            return self.shortest_paths[node1][node2]
-        except KeyError:
-            # si no hay camino, retornar distancia muy grande
-            return len(self.graph.nodes)
 
     def reset(self, *, seed=None, options=None):
         """Reset the environment to initial state."""
         super().reset(seed=seed, options=options)
-        self.current_node = 0
+        self.current_node = self.np_random.integers(
+            low=0, high=len(self.graph.nodes))
         self.remaining_waypoints = self.waypoints.copy()
-        self.steps_taken = 0
-        
-        # inicializar historial con nodo de inicio
-        self.path_history = [self.current_node]
 
         obs = np.array([
             self.current_node,
             self.remaining_waypoints[0] if self.remaining_waypoints else self.destination,
             self.destination], dtype=np.int32)
-        return obs, {}
 
-    def _execute_movement(self, action):
-        """Ejecuta el movimiento del agente al nodo vecino seleccionado."""
-        neighbors = list(self.graph.neighbors(self.current_node))
-        self.current_node = neighbors[action]
-        self.path_history.append(self.current_node)
-        
-    def _calculate_base_reward(self, dist_before, dist_after):
-        """Calcula la recompensa base por progreso hacia el objetivo."""
-        if dist_after < dist_before:
-            return 0  # Se acercó al objetivo
-        elif dist_after > dist_before:
-            return -2  # Se alejó del objetivo
-        else:
-            return -1  # No cambió la distancia
-    
-    def _check_waypoint_reached(self):
-        """Verifica si se alcanzó un waypoint y actualiza la lista."""
-        if self.remaining_waypoints and self.current_node == self.remaining_waypoints[0]:
-            self.remaining_waypoints.pop(0)
-            return 100  # Bonus por alcanzar waypoint
-        return 0
-    
-    def _check_destination_reached(self):
-        """Verifica si se alcanzó el destino final."""
-        if not self.remaining_waypoints and self.current_node == self.destination:
-            return True
-        return False
-    
-    def _get_observation(self):
-        """Genera la observación actual del entorno."""
-        next_target = self.remaining_waypoints[0] if self.remaining_waypoints else self.destination
-        return np.array([
-            self.current_node,
-            next_target,
-            self.destination
-        ], dtype=np.int32)
-    
-    def _get_info(self):
-        """Genera la información adicional del paso actual."""
-        return {
-            "path": self.path_history.copy()
-        }
+        # Provide an action mask to help mask-aware algorithms/losses
+        info = {"action_mask": self._build_action_mask(self.current_node)}
+        return obs, info
 
     def step(self, action):
         """Execute one step in the environment."""
-        self.steps_taken += 1
-        
-        next_target = self.remaining_waypoints[0] if self.remaining_waypoints else self.destination
-        
-        # calcular distancia ANTES del movimiento
-        distance_before = self._get_distance(self.current_node, next_target)
+        # Use a stable neighbor ordering so action indices are consistent
+        neighbors = sorted(list(self.graph.neighbors(self.current_node)))
 
-        # ejecutar movimiento
-        self._execute_movement(action)
+        if action >= len(neighbors):
+            # Wrong action -> penlty
+            reward = -10
+            done = False
+        else:
+            # Move to the neighbor
+            self.current_node = neighbors[action]
+            reward = -1
+            done = False
 
-        # calcular distancia DESPUÉS del movimiento
-        distance_after = self._get_distance(self.current_node, next_target)
-        
-        # calcular recompensa total
-        reward = self._calculate_base_reward(distance_before, distance_after)
-        reward += self._check_waypoint_reached()
-        
-        # verificar si se alcanzó el destino final
-        done = self._check_destination_reached()
-        if done:
-            reward += 1000  # Bonus por alcanzar destino final
-        
-        # truncamiento por pasos máximos
-        truncated = self.steps_taken >= self.max_steps
+            # Check if reach waypoint
+            if self.remaining_waypoints and self.current_node == self.remaining_waypoints[0]:
+                reward = +100
+                self.remaining_waypoints.pop(0)
 
-        # generar observación e información
-        obs = self._get_observation()
-        info = self._get_info()
+            # Check if reach destination
+            if not self.remaining_waypoints and self.current_node == self.destination:
+                reward = +1000
+                done = True
 
-        return obs, reward, done, truncated, info
+        obs = np.array([
+            self.current_node,
+            self.remaining_waypoints[0] if self.remaining_waypoints else self.destination,
+            self.destination], dtype=np.int32)
 
+        info = {"action_mask": self._build_action_mask(self.current_node)}
+        return obs, reward, done, False, info
 
     def render(self):
         """Render the current state of the environment."""
-        neighbors = list(self.graph.neighbors(self.current_node))
         print(f"Current node: {self.current_node}, "
-              f"Remaining waypoints: {self.remaining_waypoints}, "
-              f"Available neighbors: {neighbors}")
+              f"Remaining waypoints: {self.remaining_waypoints}")
 
+    # ---- Helpers ----
+    def _build_action_mask(self, node_id: int) -> np.ndarray:
+        """Return a boolean mask of length max_degree marking valid neighbor actions.
+
+        True entries in [0:deg) indicate valid neighbor indices given the current
+        sorted neighbor list. Remaining entries are False (invalid/padded actions).
+        """
+        deg = self.graph.degree(node_id)
+        mask = np.zeros(self._max_degree, dtype=bool)
+        mask[:deg] = True
+        return mask
