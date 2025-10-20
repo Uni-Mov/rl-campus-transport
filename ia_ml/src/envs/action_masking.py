@@ -174,6 +174,7 @@ class ActionMaskingWrapper(gym.Wrapper):
 def create_masked_waypoint_env(
     graph,
     waypoints,
+    start_node,
     destination,
     env_cfg: dict | None = None,
     rew_cfg: dict | None = None,
@@ -184,6 +185,7 @@ def create_masked_waypoint_env(
     """
     env = WaypointNavigationEnv(
         graph=graph,
+        start_node=start_node,
         waypoints=waypoints,
         destination=destination,
         env_cfg=env_cfg or {},

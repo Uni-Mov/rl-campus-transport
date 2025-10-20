@@ -19,6 +19,7 @@ class WaypointNavigationEnv(gym.Env):
     def __init__(
         self,
         graph: nx.MultiDiGraph,
+        start_node: int,
         waypoints: List[int],
         destination: int,
         env_cfg: Dict[str, Any],
@@ -27,6 +28,7 @@ class WaypointNavigationEnv(gym.Env):
         super().__init__()
 
         self.graph = graph
+        self.start_node = start_node
         self.waypoints = list(waypoints)
         self.destination = destination
         self.render_mode = env_cfg.get("render_mode", "human")
@@ -39,11 +41,6 @@ class WaypointNavigationEnv(gym.Env):
 
     # configuracion de entorno
     def _init_environment(self, env_cfg: Dict[str, Any]):
-        self.start_node = (
-            next(iter(self.graph.nodes))
-            if env_cfg.get("start_node", "auto") == "auto"
-            else env_cfg.get("start_node")
-        )
         self.max_steps = (
             max(1, self.graph.number_of_nodes())
             if env_cfg.get("max_steps", "auto") == "auto"
@@ -77,7 +74,7 @@ class WaypointNavigationEnv(gym.Env):
         self.destination_bonus = rew_cfg.get("destination_bonus", 200.0)
         self.no_progress_penalty = rew_cfg.get("no_progress_penalty", 2.0)
 
-    # -variables de estado
+    # variables de estado
     def _reset_state_vars(self):
         self.current_node: Optional[int] = None
         self.remaining_waypoints: List[int] = []
