@@ -195,6 +195,14 @@ class WaypointNavigationEnv(gym.Env):
     # funciones auxiliares para el grafo
     def _neighbors(self, node: Optional[int]) -> List[int]:
         return list(self.graph.neighbors(node)) if node in self.graph else []
+    
+    #Getter de la mascara de acciones válidas, ahora es dinamica
+    def _get_action_mask(self) -> np.ndarray:
+        mask = np.zeros(self.max_actions, dtype=bool)
+        neighbors = self._neighbors(self.current_node)
+        valid_indices = range(len(neighbors))
+        mask[list(valid_indices)] = True
+        return mask
 
     def _sp_length(self, a: int, b: int) -> float:
         # usa dijkstra para longitud de camino más corto
@@ -207,9 +215,10 @@ class WaypointNavigationEnv(gym.Env):
     def _edge_data(self, u: int, v: int) -> Dict[str, Any]:
         data = self.graph.get_edge_data(u, v, default={})
         if isinstance(data, dict) and all(isinstance(k, int) for k in data.keys()):
-            entry = data.get(next(iter(data)))
-            return entry if isinstance(entry, dict) else {}
-        return data
+            if data:
+                entry = data.get(next(iter(data)), {})
+                return entry if isinstance(entry, dict) else {}
+        return data if isinstance(data, dict) else {}
 
     def _get_obs(self) -> np.ndarray:
     # embeddings del nodo actual y del destino
