@@ -1,90 +1,44 @@
-import { useTrip } from "./hooks/useTrip";
-import { useMap } from "./hooks/useMap";
-import { useRoute } from "./hooks/useRoute";
-import { defineRoute } from "./hooks/defineRoute";
-import { TripControls } from "./organisms/TripControls";
-import { TripInfo } from "./organisms/TripInfo";
-import { MapContainer } from "./organisms/MapContainer";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { PointSelectionMode } from "./selection/PointSelectionMode";
+import { TravelWithRoute } from "./route/components/TravelWithRoute";
+import { defineRoute } from "./route/services/defineRoute";
+import { UNIVERSITY_COORDINATES } from "./constants";
 import type { Coordinate } from "@/types/coordinate";
 
 
-// solo se renderiza cuando hay coordenadas
-function TravelWithRoute({ routeCoordinates }: { routeCoordinates: Coordinate[] }) {
-  // seteo el estado inicial del mapa
-  const { viewState, setViewState, initialViewState, centerOnPosition, resetView } = useMap({
-    initialLongitude: routeCoordinates[0][0],
-    initialLatitude: routeCoordinates[0][1],
-    initialZoom: 12,
-  });
-  
-  // seteo el estado inicial del viaje
-  const { 
-    carPosition, 
-    isTripStarted, 
-    isTripCompleted, 
-    currentRouteIndex, 
-    startTrip, 
-    resetTrip 
-  } = useTrip({
-    routeCoordinates,
-    onTripUpdate: centerOnPosition,
-  });
-  
-  // seteo el estado inicial de la ruta/lineas de la ruta
-  const { layers } = useRoute({
-    routeCoordinates,
-    carPosition,
-    currentRouteIndex,
-  });
+// Estados posibles de la aplicación
+type TravelMode = 'selection' | 'route';
 
-  const handleStartTrip = () => {
-    startTrip();
-  };
-
-  const handleResetTrip = () => {
-    resetTrip();
-    resetView();
-  };
-
-  return (
-    <div className="w-full h-screen relative">
-      <TripControls
-        isTripStarted={isTripStarted}
-        isTripCompleted={isTripCompleted}
-        onStartTrip={handleStartTrip}
-        onResetTrip={handleResetTrip}
-      />
-
-      <TripInfo
-        isTripStarted={isTripStarted}
-        isTripCompleted={isTripCompleted}
-        currentRouteIndex={currentRouteIndex}
-        totalRoutePoints={routeCoordinates.length}
-      />
-
-      <MapContainer
-        initialViewState={initialViewState}
-        viewState={viewState}
-        onViewStateChange={({ viewState: newViewState }) => setViewState(newViewState as any)}
-        layers={layers}
-      />
-    </div>
-  );
-}
-
-// componente principal que solo maneja la carga de datos
+/**
+ * componente principal que maneja el estado global de la aplicación de viajes.
+ * Su única responsabilidad es coordinar entre los dos modos principales:
+ * - modo selección: Para seleccionar puntos y generar rutas
+ * - modo ruta: Para visualizar y simular el viaje
+ */
 export default function Travel() {
   const [routeCoordinates, setRouteCoordinates] = useState<Coordinate[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  
-  useEffect(() => {
-    defineRoute().then(coords => {
-      setRouteCoordinates(coords);
-      setIsLoading(false);
-    });
-  }, []);
+  const [waypoints, setWaypoints] = useState<Coordinate[]>([]);
+  const [isLoading] = useState(false);
+  const [mode, setMode] = useState<TravelMode>('selection');
 
+  // manejadores de eventos para la coordinación entre los modos
+  const handlePointsSelected = async (selectedPoints: Coordinate[]) => {
+    // completa los waypoints agregando la universidad como destino
+    const waypointsWithUniversity = [...selectedPoints, UNIVERSITY_COORDINATES];
+    // calcula la ruta usando el util compartido
+    const route = await defineRoute(waypointsWithUniversity);
+    setRouteCoordinates(route);
+    setWaypoints(waypointsWithUniversity);
+    setMode('route');
+  };
+
+  const handleBackToSelection = () => {
+    setMode('selection');
+    setRouteCoordinates([]);
+    setWaypoints([]);
+  };
+
+  // renderizado condicional basado en el modo actual
   if (isLoading) {
     return (
       <div className="w-full h-screen flex items-center justify-center">
@@ -93,6 +47,15 @@ export default function Travel() {
     );
   }
 
- // se renderiza el componente solo en el caso de que haya coordenadas
-  return <TravelWithRoute routeCoordinates={routeCoordinates} />;
+  if (mode === 'route' && routeCoordinates.length > 0) {
+    return (
+      <TravelWithRoute 
+        routeCoordinates={routeCoordinates} 
+        waypoints={waypoints} 
+        onBackToSelection={handleBackToSelection} 
+      />
+    );
+  }
+
+  return <PointSelectionMode onPointsSelected={handlePointsSelected} />;
 }

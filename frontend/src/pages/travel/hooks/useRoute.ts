@@ -8,9 +8,10 @@ interface UseRouteProps {
   routeCoordinates: Coordinate[];
   carPosition: Coordinate;
   currentRouteIndex: number;
+  waypoints?: Coordinate[]; // Puntos de origen y destino
 }
 
-export const useRoute = ({ routeCoordinates, carPosition, currentRouteIndex }: UseRouteProps) => {
+export const useRoute = ({ routeCoordinates, carPosition, currentRouteIndex, waypoints }: UseRouteProps) => {
   // Crear ruta dinámica que muestra el progreso
   const dynamicRouteGeoJson: FeatureCollection<LineString> = useMemo(() => ({
     type: "FeatureCollection",
@@ -41,7 +42,42 @@ export const useRoute = ({ routeCoordinates, carPosition, currentRouteIndex }: U
     ],
   }), [routeCoordinates]);
 
+  // Crear GeoJSON para los waypoints (puntos de origen y destino)
+  const waypointsGeoJson: FeatureCollection = useMemo(() => ({
+    type: "FeatureCollection",
+    features: waypoints?.map((point, index) => ({
+      type: "Feature",
+      geometry: {
+        type: "Point",
+        coordinates: point,
+      },
+      properties: {
+        index: index + 1,
+        isStart: index === 0,
+        isEnd: index === waypoints.length - 1,
+      },
+    })) || [],
+  }), [waypoints]);
+
   const layers = useMemo(() => [
+    // Waypoints (puntos de origen y destino)
+    ...(waypoints && waypoints.length > 0 ? [
+      new GeoJsonLayer({
+        id: "waypoints",
+        data: waypointsGeoJson,
+        pointRadiusMinPixels: 10,
+        pointRadiusMaxPixels: 15,
+        getFillColor: (d) => {
+          const props = d.properties;
+          if (props.isStart) return [0, 255, 0]; // Verde para inicio
+          if (props.isEnd) return [255, 0, 0]; // Rojo para destino
+          return [255, 255, 0]; // Amarillo para puntos intermedios
+        },
+        getLineColor: [255, 255, 255], // Borde blanco
+        lineWidthMinPixels: 2,
+        pickable: true,
+      })
+    ] : []),
     // Ruta completa en gris
     new GeoJsonLayer({
       id: "full-route",
@@ -94,7 +130,7 @@ export const useRoute = ({ routeCoordinates, carPosition, currentRouteIndex }: U
         getPosition: carPosition,
       },
     }),
-  ], [fullRouteGeoJson, dynamicRouteGeoJson, carPosition]);
+  ], [waypoints, waypointsGeoJson, fullRouteGeoJson, dynamicRouteGeoJson, carPosition]);
 
   return {
     layers,
