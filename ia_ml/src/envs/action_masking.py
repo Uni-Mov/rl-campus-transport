@@ -183,6 +183,9 @@ def create_masked_waypoint_env(
     """
     Crea un entorno WaypointNavigationEnv usando configuración YAML.
     """
+    if isinstance(waypoints, int):
+        waypoints = [waypoints]
+        
     env = WaypointNavigationEnv(
         graph=graph,
         start_node=start_node,

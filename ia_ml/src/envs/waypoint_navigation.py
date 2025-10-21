@@ -27,10 +27,17 @@ class WaypointNavigationEnv(gym.Env):
     ) -> None:
         super().__init__()
 
+        if isinstance(waypoints, int):
+            self.waypoints = [waypoints]
+        else:
+            self.waypoints = list(waypoints)
+
         self.graph = graph
         self.start_node = start_node
         self.waypoints = list(waypoints)
         self.destination = destination
+        self.env_cfg = env_cfg
+        self.rew_cfg = rew_cfg
         self.render_mode = env_cfg.get("render_mode", "human")
 
         # inicialización de entorno
@@ -173,9 +180,9 @@ class WaypointNavigationEnv(gym.Env):
         if done:
             reason = "destination_reached"
         elif self.steps_taken >= self.max_steps:
-            truncated, reason = True, "max_steps"
+            truncated, done, reason = True, True, "max_steps"
         elif self.max_wait_steps and self.steps_taken >= self.max_wait_steps:
-            truncated, reason = True, "max_wait_steps"
+            truncated, done, reason = True, True, "max_wait_steps"
 
         info = {"terminated_reason": reason} if reason else {}
         return done, truncated, info
@@ -205,11 +212,34 @@ class WaypointNavigationEnv(gym.Env):
         return mask
 
     def _sp_length(self, a: int, b: int) -> float:
-        # usa dijkstra para longitud de camino más corto
+        """Calculates the path using the configured algorithm."""
+        algorithm = self.env_cfg.get("shortest_path_algorithm", "astar")
         try:
-            return float(nx.shortest_path_length(self.graph, a, b, weight=self.weight_name))
+            if algorithm == "astar":
+                return float(nx.astar_path_length(
+                    self.graph, 
+                    a, 
+                    b, 
+                    heuristic=self._heuristic
+                ))
+            elif algorithm == "dijkstra":
+                return float(nx.shortest_path_length(
+                    self.graph, 
+                    a, 
+                    b, 
+                    weight=self.weight_name
+                ))
+            else:
+                raise ValueError(f"Unknown algorithm: {algorithm}")
         except nx.NetworkXNoPath:
             return float(self.graph.number_of_nodes())
+        
+    def _heuristic(self, u: int, v: int) -> float:
+        """Euclidian heuristic for A* https://www.geeksforgeeks.org/dsa/a-search-algorithm/"""
+        u_data = self.graph.nodes[u]
+        v_data = self.graph.nodes[v]
+        # La distancia euclidiana entre dos puntos es la longitud del segmento de línea entre ellos. Se puede calcular a partir de las coordenadas cartesianas de los puntos utilizando el teorema de Pitágoras.
+        return ((u_data['x'] - v_data['x'])**2 + (u_data['y'] - v_data['y'])**2)**0.5
         
     # devuelve un diccionario con la información de la arista entre dos nodos
     def _edge_data(self, u: int, v: int) -> Dict[str, Any]:
