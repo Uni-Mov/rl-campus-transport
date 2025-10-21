@@ -79,10 +79,6 @@ def example_create_env(place="Río Cuarto, Córdoba, Argentina"):
     waypoints = [0, max(1, n_nodes // 2)]
     destination = n_nodes - 1
 
-    env = WaypointNavigationEnv(G_idx, waypoints, destination)
-    obs, info = env.reset()
-    print("obs:", obs, "info:", info)
-    return env, node_to_idx, idx_to_node
 
 if __name__ == "__main__":
     example_create_env()
