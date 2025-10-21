@@ -1,7 +1,6 @@
 import os
 import osmnx as ox
-import networkx as nx
-from ia_ml.src.envs.waypoint_navigation import WaypointNavigationEnv 
+import networkx as nx 
 
 
 def _configure_osmnx():
@@ -36,7 +35,7 @@ def relabel_nodes_to_indices(G: nx.Graph):
     G_relabeled = nx.relabel_nodes(G, node_to_idx, copy=True)
     return G_relabeled, node_to_idx, idx_to_node
 
-def get_graph_relabel(locality: str):
+def get_graph_relabel(locality: str, *, return_original: bool = False):
 
     safe_name = locality.replace(",", "").replace(" ", "_")
     graph_path = f"ia_ml/src/data/{safe_name}.graphml"
@@ -47,7 +46,39 @@ def get_graph_relabel(locality: str):
         G = load_graph_from_graphml(graph_path)
 
     G_relabel, node_to_idx, idx_to_node = relabel_nodes_to_indices(G)
+    if return_original:
+        return G_relabel, node_to_idx, idx_to_node, G
     return G_relabel, node_to_idx, idx_to_node
 
 
+def indices_to_osm_nodes(path_indices, idx_to_node):
+    """Convierte un camino en índices (0..n-1) a IDs originales de OSM."""
+    converted = []
+    for idx in path_indices:
+        try:
+            converted.append(idx_to_node[int(idx)])
+        except (KeyError, ValueError, TypeError):
+            continue
+    return converted
 
+def example_create_env(place="Río Cuarto, Córdoba, Argentina"):
+    """Example of creating the WaypointNavigationEnv."""
+    graph_path = "ia_ml/src/data/grafo_rio_cuarto.graphml"
+    if not os.path.exists(graph_path):
+        print("Descargando grafo...")
+        G = download_and_save_graph(place, graph_path)
+    else:
+        print("Cargando grafo desde GraphML...")
+        G = load_graph_from_graphml(graph_path)
+
+    G_idx, node_to_idx, idx_to_node = relabel_nodes_to_indices(G)
+
+    n_nodes = G_idx.number_of_nodes()
+    if n_nodes < 3:
+        raise RuntimeError("Grafo demasiado chico para ejemplo")
+    waypoints = [0, max(1, n_nodes // 2)]
+    destination = n_nodes - 1
+
+
+if __name__ == "__main__":
+    example_create_env()
