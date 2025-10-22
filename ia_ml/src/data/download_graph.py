@@ -61,24 +61,3 @@ def indices_to_osm_nodes(path_indices, idx_to_node):
             continue
     return converted
 
-def example_create_env(place="Río Cuarto, Córdoba, Argentina"):
-    """Example of creating the WaypointNavigationEnv."""
-    graph_path = "ia_ml/src/data/grafo_rio_cuarto.graphml"
-    if not os.path.exists(graph_path):
-        print("Descargando grafo...")
-        G = download_and_save_graph(place, graph_path)
-    else:
-        print("Cargando grafo desde GraphML...")
-        G = load_graph_from_graphml(graph_path)
-
-    G_idx, node_to_idx, idx_to_node = relabel_nodes_to_indices(G)
-
-    n_nodes = G_idx.number_of_nodes()
-    if n_nodes < 3:
-        raise RuntimeError("Grafo demasiado chico para ejemplo")
-    waypoints = [0, max(1, n_nodes // 2)]
-    destination = n_nodes - 1
-
-
-if __name__ == "__main__":
-    example_create_env()
