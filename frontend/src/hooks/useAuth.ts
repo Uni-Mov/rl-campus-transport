@@ -1,8 +1,11 @@
 import { useState, useEffect } from "react";
 import { register as api_register, login as api_login, logout as api_logout } from "../api/auth-api";
+
 export const useAuth = () => {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    
     useEffect(() => {
         const token = localStorage.getItem("authToken");
         setIsLoggedIn(!!token);
@@ -10,30 +13,47 @@ export const useAuth = () => {
     }
     , []);
 
-    const login = () => {
-        api_login("", "");
-        const token = "hola soy un token";
-        localStorage.setItem("authToken", token);
-        setIsLoggedIn(true);
-    }
-
-    const logout = () => {
-        api_logout();
-        localStorage.removeItem("authToken");
-        setIsLoggedIn(false);
-    }
-
-    const register = async (name: string, lastname : string, email: string, password: string): Promise<boolean> => {
+    const login = async (email: string, password: string) => {
         try {
-            const res = await api_register(name, lastname, email, password);
-            localStorage.setItem("authToken", res);
+            setError(null);
+            const token = await api_login(email, password);
+            localStorage.setItem("authToken", token as string);
             setIsLoggedIn(true);
-            return true;
-        } catch (res) {
-           return false;
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "An error occurred during login");
+            throw err;
         }
-    }
+    };
     
-    return { isLoggedIn, loading, login, logout, register };
+    const register = async (
+        firstname: string, 
+        lastname : string,
+        dni:string, 
+        email: string, 
+        password: string,
+        role: string
+    ) => {
+        try {
+            setError(null);
+            await api_register(firstname, lastname, dni, email, password, role);
+            setIsLoggedIn(true);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "An error occurred during registration");
+            throw err;
+        }
+    };
+
+    const logout = async () => {
+        try {
+            setError(null);
+            await api_logout();
+            setIsLoggedIn(false);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "An error occurred during logout");
+            throw err;
+        }
+    };
+    
+    return { isLoggedIn, loading, error, login, logout, register };
 
 };
