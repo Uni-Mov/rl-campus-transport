@@ -16,7 +16,7 @@ from src.utils.config_loader import load_config
 
 
 def make_env(graph, start_node, waypoints, destination, environment_cfg: Dict, rewards_cfg: Dict):
-    return create_masked_waypoint_env(graph, start_node, waypoints, destination, environment_cfg, rewards_cfg)
+    return create_masked_waypoint_env(graph, waypoints, start_node, destination, environment_cfg, rewards_cfg)
 
 
 def main() -> None:
@@ -24,7 +24,7 @@ def main() -> None:
     CONFIG_PATH = Path(__file__).resolve().parents[1] / "envs" / "config" / "config.yaml"
     cfg = load_config(CONFIG_PATH)
     environment_cfg, rewards_cfg = cfg["environment"], cfg["rewards"]
-    locality = "Guatimozin, Cordoba, Argentina"
+    locality = "Río Cuarto, Cordoba, Argentina"
     print(f"Preparando grafo para: {locality}")
     graph, _ , _  = get_graph_relabel(locality)
 

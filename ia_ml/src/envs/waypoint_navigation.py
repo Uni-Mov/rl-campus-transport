@@ -27,18 +27,26 @@ class WaypointNavigationEnv(gym.Env):
     ) -> None:
         super().__init__()
 
-        if isinstance(waypoints, int):
-            self.waypoints = [waypoints]
+        env_cfg = env_cfg or {}
+        rew_cfg = rew_cfg or {}
+
+        if waypoints is None:
+            waypoints = []
+        elif isinstance(waypoints, (int,str)):
+            waypoints = [waypoints]
         else:
-            self.waypoints = list(waypoints)
+            try:
+                waypoints = list(waypoints)
+            except TypeError:
+                waypoints = [waypoints]
 
         self.graph = graph
         self.start_node = start_node
-        self.waypoints = list(waypoints)
+        self.waypoints = waypoints
         self.destination = destination
         self.env_cfg = env_cfg
         self.rew_cfg = rew_cfg
-        self.render_mode = env_cfg.get("render_mode", "human")
+        self.render_mode = self.env_cfg.get("render_mode", "human")
 
         # inicialización de entorno
         self._init_environment(env_cfg)

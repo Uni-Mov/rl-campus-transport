@@ -22,7 +22,7 @@ from src.utils.config_loader import load_config
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Generar un camino usando un modelo PPO entrenado")
-    parser.add_argument("--place", type=str, default="Guatimozin, Cordoba, Argentina", help="Localidad a cargar")
+    parser.add_argument("--place", type=str, default="Rio Cuarto, Cordoba, Argentina", help="Localidad a cargar")
     parser.add_argument("--model-path", type=str, default="ppo_waypoint_masked.zip", help="Ruta al modelo .zip")
     parser.add_argument("--start", type=int, default=0, help="Nodo inicial")
     parser.add_argument("--waypoints", type=int, nargs="*", default=[], help="Waypoints a visitar (orden libre)")
