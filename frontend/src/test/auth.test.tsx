@@ -1,5 +1,5 @@
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { test, describe, expect, vi } from 'vitest';
+import { test, describe, expect, vi, beforeEach } from 'vitest';
 import { useAuth } from '../hooks/useAuth';
 
 // mockeamos la api de auth
@@ -52,6 +52,45 @@ describe('useAuth hook', () => {
         
         expect(result.current.isLoggedIn).toBe(false);
         expect(localStorage.getItem("authToken")).toBeNull();
+    });
+
+    test('manejo de errores en login', async () => {
+        const { login } = require('../api/auth-api');
+        login.mockRejectedValueOnce(new Error("Login failed"));
+
+        const { result } = renderHook(() => useAuth());
+
+        await act(async () => {
+            await result.current.login("test@example.com", "wrongpassword");
+        });
+
+        await waitFor(() => {
+            expect(result.current.error).toBe("Login failed");
+            expect(result.current.isLoggedIn).toBe(false);
+        });
+    });
+    
+    test('manejo de errores en register', async () => {
+        const { register } = require('../api/auth-api');
+        register.mockRejectedValueOnce(new Error("Register failed"));
+
+        const { result } = renderHook(() => useAuth());
+
+        await act(async () => {
+            await result.current.register(
+                "sebastian",
+                "driussi", 
+                "12345678",
+                "sebadriussi@example.com",
+                "password",
+                "PASSENGER"
+            );
+        });
+
+        await waitFor(() => {
+            expect(result.current.error).toBe("Register failed");
+            expect(result.current.isLoggedIn).toBe(false);
+        });
     });
 
 });
