@@ -1,4 +1,11 @@
 import osmnx as ox
+from pathlib import Path
+import sys
+
+IA_ML_DIR = str(Path(__file__).parent.parent.resolve()) 
+if IA_ML_DIR not in sys.path:
+    sys.path.insert(0, IA_ML_DIR)
+
 from src.envs.waypoint_navigation import WaypointNavigationEnv
 
 def main():

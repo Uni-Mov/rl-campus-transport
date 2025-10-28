@@ -2,7 +2,7 @@ import os
 import osmnx as ox
 import networkx as nx 
 import pickle
-from typing import Dict
+from typing import Dict, Optional
 
 
 def _configure_osmnx():

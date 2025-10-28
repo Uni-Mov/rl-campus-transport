@@ -67,6 +67,12 @@ class WaypointNavigationEnv(gym.Env):
             else env_cfg.get("max_wait_steps")
         )
 
+        self.distance_matrix = None
+        dm = self.graph.graph.get("distances")
+        if dm is not None:
+            # expected: dict[source_idx][target_idx] -> float
+            self.distance_matrix = dm
+
     # espacios de accion y observacion
     def _init_spaces(self):
         self.node_embeddings = build_node_embeddings(self.graph)
@@ -221,6 +227,13 @@ class WaypointNavigationEnv(gym.Env):
 
     def _sp_length(self, a: int, b: int) -> float:
         """Calculates the path using the configured algorithm."""
+        if self.distance_matrix is not None:
+            try:
+                # quick try: direct dict lookup
+                return float(self.distance_matrix.get(a, {}).get(b, np.inf))
+            except Exception:
+                pass
+
         algorithm = self.env_cfg.get("shortest_path_algorithm", "astar")
         try:
             if algorithm == "astar":

@@ -1,4 +1,11 @@
 import pytest
+import sys
+from pathlib import Path
+
+IA_ML_DIR = str(Path(__file__).parent.parent.resolve()) 
+if IA_ML_DIR not in sys.path:
+    sys.path.insert(0, IA_ML_DIR)
+    
 from src.envs.waypoint_navigation import WaypointNavigationEnv
 
 def test_environment_initialization(city_graph):
