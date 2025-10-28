@@ -21,3 +21,10 @@ def precalculate_distances(G, cache_path="data/distances_cache.pkl"):
     # Si no existe, las calculamos
     print("[distances] Calculando distancias entre nodos (esto puede tardar)...")
     shortest_paths = dict(nx.all_pairs_dijkstra_path_length(G))
+
+    # Guardamos en cache para próximas ejecuciones
+    with open(cache_path, "wb") as f:
+        pickle.dump(shortest_paths, f)
+
+    print(f"[distances] Distancias precalculadas y guardadas en {cache_path}")
+    return shortest_paths
