@@ -17,6 +17,10 @@ class UserRepository:
         """Return a user by ID or None if not found."""
         return self.db_session.query(User).filter(User.id == user_id).first()
 
+    def get_by_email(self, email: str):
+        """Return a user by email or None if not found."""
+        return self.db_session.query(User).filter(User.email == email).first()
+
     def create(self, user: User):
         """Add a new user to the database."""
         self.db_session.add(user)
