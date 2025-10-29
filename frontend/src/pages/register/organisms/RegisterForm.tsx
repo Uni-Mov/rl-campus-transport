@@ -51,6 +51,26 @@ export function RegisterForm() {
             />
           </div>
         </div>
+ 
+        <div className="space-y-2">
+          <label htmlFor="name" className="text-sm font-medium text-gray-700">
+            DNI
+          </label>
+
+          <div className="relative">
+            <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              id="dni"
+              name="dni"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]{7,8}"
+              placeholder="Enter your DNI"
+              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-colors"
+              required
+            />
+          </div>
+        </div>
 
         <div className="space-y-2">
           <label htmlFor="email" className="text-sm font-medium text-gray-700">
@@ -66,6 +86,24 @@ export function RegisterForm() {
               className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-colors"
               required
             />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="role" className="text-sm font-medium text-gray-700">
+            Role
+          </label>
+          <div className="relative">
+            <select
+              id="role"
+              name="role"
+              defaultValue="passenger"
+              className="w-full pl-3 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-colors"
+              required
+            >
+              <option value="passenger">Passenger</option>
+              <option value="driver">Driver</option>
+            </select>
           </div>
         </div>
 
