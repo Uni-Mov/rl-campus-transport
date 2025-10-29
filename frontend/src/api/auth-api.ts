@@ -1,6 +1,6 @@
 
-export const login = async (email: string, password: string): Promise<String> => {
-    const response = fetch("https://localhost:5000/api/users/login", {
+export const login = async (email: string, password: string): Promise<string> => {
+    const response = await fetch("http://localhost:5000/users/login", {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -8,29 +8,29 @@ export const login = async (email: string, password: string): Promise<String> =>
         body: JSON.stringify({ email, password })
     });
 
-    if (!(await response).ok) {
+    if (!response.ok) {
         throw new Error("Login failed");
     }
 
-    const data = await (await response).json();
+    const data = await response.json();
     localStorage.setItem("authToken", data.token);
-    return data.token;
+    return data.token as string;
 }
 
 export const register = async (
-    firstname: string,
-    lastname: string,
+    first_name: string,
+    last_name: string,
     dni: string,
     email: string,
     password: string,
     role: string
 ): Promise<string> => {
-    const response = await fetch("https://localhost:5000/api/users", {
+    const response = await fetch("http://localhost:5000/users/", {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
         },
-        body: JSON.stringify({ firstname, lastname, dni, email, password, role })
+        body: JSON.stringify({ first_name, last_name, dni, email, password, role })
     });
 
     if (!response.ok) {
@@ -38,16 +38,16 @@ export const register = async (
         throw new Error("Registration failed: " + error.description);
     }
 
-    const data = await response.json();
-    localStorage.setItem("authToken", data.token);
-    return data.token;
+    await response.json();
+    const token = await login(email, password);
+    return token;
 }
 
 export const logout = async (): Promise<void> => {
     const token = localStorage.getItem("authToken");
     if (!token) return;
 
-    const response = await fetch("https://localhost:5000/api/users/logout", {
+    const response = await fetch("http://localhost:5000/users/logout", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
