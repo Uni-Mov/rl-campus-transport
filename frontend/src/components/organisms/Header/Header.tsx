@@ -18,7 +18,7 @@ export default function Header() {
   const buttons = [];
   
   if (isLoggedIn) {
-  buttons.push({ label: "Logout", onClick: logout, bg: "primary" });
+    buttons.push({ label: "Logout", onClick: logout, bg: "primary" });
   } else {
   switch (location.pathname) {
     case "/login":

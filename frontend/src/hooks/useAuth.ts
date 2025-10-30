@@ -17,7 +17,7 @@ export const useAuth = () => {
         const token = await apiLogin(email, password);
         localStorage.setItem("authToken", token);
         setIsLoggedIn(true);
-        navigate("/");
+        navigate("/travel");
     };
 
     const logout = async () => {
@@ -41,7 +41,7 @@ export const useAuth = () => {
         const token = await apiRegister(name, lastname, dni, email, password, effectiveRole);
         localStorage.setItem("authToken", token);
         setIsLoggedIn(true);
-        navigate("/");
+        navigate("/travel");
     };
 
     return { isLoggedIn, loading, login, logout, register };
