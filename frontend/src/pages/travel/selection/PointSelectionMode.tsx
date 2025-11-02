@@ -48,7 +48,7 @@ export const PointSelectionMode = ({ onPointsSelected }: PointSelectionModeProps
   };
 
   return (
-    <div className="w-full h-[80vh] max-w-7xl mx-auto relative rounded-lg overflow-hidden shadow">
+    <div className="absolute inset-0 w-full h-full overflow-hidden">
       <PointSelectionControls
         selectedPoints={selectedPoints}
         canGenerateRoute={canGenerateRoute}
