@@ -6,6 +6,7 @@ export const useAuthMock = () => {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
+
     useEffect(() => {
         // agregar usuario de prueba solo si no existe
         const existingUser = MemoryDB.users.find(user => user.email === "borja@example.com");
@@ -28,7 +29,7 @@ export const useAuthMock = () => {
         localStorage.setItem("authToken", token);
         setIsLoggedIn(true);
         navigate("/");
-        }
+    }
 
     const logout = () => {
         localStorage.removeItem("authToken");
