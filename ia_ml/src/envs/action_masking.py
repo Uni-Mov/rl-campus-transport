@@ -113,7 +113,11 @@ class ActionMaskingWrapper(gym.Wrapper):
 
     def _calculate_cycle_penalty(self):
         cycle_penalty = 0
-
+         # ida y vuelta
+        if len(self.recent_nodes) >= 2:
+            if self.recent_nodes[-1] == self.recent_nodes[-2]:
+                cycle_penalty = -100  # volver directamente atrás
+                
         if len(self.recent_nodes) >= 5:
             recent = list(self.recent_nodes)[-5:]
             if len(set(recent)) < 3:
