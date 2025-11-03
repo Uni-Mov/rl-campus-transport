@@ -1,4 +1,3 @@
-# ia_ml/scripts/check_estimate.py
 
 from ia_ml.utils.estimate_training_time import estimate
 
