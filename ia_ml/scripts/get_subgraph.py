@@ -18,6 +18,7 @@ import osmnx as ox
 import networkx as nx
 import math
 import numpy as np
+import matplotlib.pyplot as plt
 
 IA_ML_DIR = str(Path(__file__).parent.parent.resolve())
 if IA_ML_DIR not in sys.path:
@@ -99,7 +100,8 @@ def main():
         epilog="""
 Ejemplos:
   python scripts/get_subgraph.py --locality "Río Cuarto, Córdoba, Argentina" --radius 1000 --output subgraph.graphml
-  python scripts/get_subgraph.py --locality "Guatimozin, Cordoba, Argentina" --radius 500 --output subgraph.graphml
+  python scripts/get_subgraph.py --locality "Guatimozin, Cordoba, Argentina" --radius 500 --output subgraph.graphml --visualize
+  python scripts/get_subgraph.py --locality "Río Cuarto, Córdoba, Argentina" --radius 1000 --output subgraph.graphml --save-plot subgraph.png
         """
     )
     
@@ -123,6 +125,18 @@ Ejemplos:
         type=str,
         required=True,
         help="Ruta donde guardar el subgrafo (formato GraphML)"
+    )
+    
+    parser.add_argument(
+        "--visualize", "-v",
+        action="store_true",
+        help="Mostrar visualización del subgrafo"
+    )
+    
+    parser.add_argument(
+        "--save-plot",
+        type=str,
+        help="Guardar visualización en archivo (ej: subgraph.png)"
     )
     
     args = parser.parse_args()
@@ -160,6 +174,33 @@ Ejemplos:
     print(f"Subgrafo guardado exitosamente")
     print(f"     Nodos: {subgraph.number_of_nodes()}")
     print(f"     Edges: {subgraph.number_of_edges()}")
+    
+    # visualizar subgrafo si se solicita
+    if args.visualize or args.save_plot:
+        print(f" Generando visualización del subgrafo...")
+        try:
+            fig, ax = ox.plot_graph(
+                subgraph,
+                node_size=20,
+                node_color='red',
+                edge_color='gray',
+                edge_linewidth=0.5,
+                show=False,
+                close=False
+            )
+            
+            if args.save_plot:
+                plot_path = script_dir / args.save_plot
+                fig.savefig(str(plot_path), dpi=150, bbox_inches='tight')
+                print(f" Visualización guardada en: {plot_path}")
+            
+            if args.visualize:
+                plt.show()
+            else:
+                plt.close(fig)
+        except Exception as e:
+            print(f" Error al visualizar: {e}")
+            print(f" (puede que falten dependencias de visualización)")
 
 
 if __name__ == "__main__":
