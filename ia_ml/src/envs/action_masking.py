@@ -1,7 +1,10 @@
 import gymnasium as gym
 import numpy as np
+import pickle
+import os
 from collections import deque, defaultdict
 from .waypoint_navigation import WaypointNavigationEnv
+from pathlib import Path
 
 
 class ActionMaskingWrapper(gym.Wrapper):
@@ -13,14 +16,31 @@ class ActionMaskingWrapper(gym.Wrapper):
     - Puede truncar el episodio si detecta un ciclo grave
     """
 
-    def __init__(self, env, debug: bool = False):
+    def __init__(self, env, debug: bool = False, distances: dict | None = None, distances_path: str | None = None):
         super().__init__(env)
         self.env = env
         self.debug = debug
+        # ciclo / tracking
         self.recent_nodes = deque(maxlen=10)
+        self.recent_nodes_set = set()
         self.visit_counter = defaultdict(int)
+        # action masking
         self.action_mask = np.zeros(self.env.max_actions, dtype=bool)
         self._base_mask = np.ones(self.env.max_actions, dtype=bool)
+        # short-path caching and precomputed distances
+        self._sp_cache = {}
+        self._sp_cache_max = 50000
+        self._distances = None
+        if distances is not None:
+            self._distances = distances
+        elif distances_path is not None and os.path.exists(distances_path):
+            try:
+                with open(distances_path, "rb") as fh:
+                    self._distances = pickle.load(fh)
+            except Exception:
+                if self.debug:
+                    print("Failed to load distances from", distances_path)
+                self._distances = None
 
     def _neighbors(self):
         if hasattr(self.env, "_ordered_neighbors"):
@@ -29,6 +49,11 @@ class ActionMaskingWrapper(gym.Wrapper):
 
     def _update_action_mask_with_cycles(self):
         neighbors = self._neighbors()
+        # limitar vecinos ya para reducir trabajo en grafos grandes
+        max_a = self.env.max_actions
+        if len(neighbors) > max_a:
+            neighbors = neighbors[:max_a]
+
         self.action_mask.fill(False)
 
         env_mask_fn = getattr(self.env, "_action_mask", None)
@@ -41,18 +66,41 @@ class ActionMaskingWrapper(gym.Wrapper):
         destination = getattr(self.env, "destination", None)
 
         targets = remaining_waypoints[:] if remaining_waypoints else [destination] if destination is not None else []
+        sp_fn = getattr(self.env, "_sp_length", None)
+
+        # dist_cache: prev dist desde current_node a cada target
         dist_cache = {}
-        if hasattr(self.env, "_sp_length") and targets:
+        if self._distances and targets:
+            cur = self.env.current_node
             for target in targets:
                 try:
-                    dist_cache[target] = self.env._sp_length(self.env.current_node, target)
+                    dist_cache[target] = self._distances.get(target, {}).get(cur, np.inf)
+                except Exception:
+                    dist_cache[target] = np.inf
+        elif sp_fn and targets:
+            for target in targets:
+                try:
+                    key = (self.env.current_node, target)
+                    if key in self._sp_cache:
+                        dist_cache[target] = self._sp_cache[key]
+                    else:
+                        dist = sp_fn(self.env.current_node, target)
+                        self._sp_cache[key] = dist
+                        dist_cache[target] = dist
                 except Exception:
                     dist_cache[target] = np.inf
 
+            if len(self._sp_cache) > self._sp_cache_max:
+                self._sp_cache.clear()
+
+        recent_set = self.recent_nodes_set
+        base_mask = self._base_mask
+
         for i, neighbor in enumerate(neighbors):
-            if i >= self.env.max_actions:
+            # i ya está acotado por el slice anterior, pero mantener seguridad
+            if i >= max_a:
                 break
-            if not self._base_mask[i]:
+            if not base_mask[i]:
                 continue
 
             if neighbor in remaining_waypoints or (not remaining_waypoints and neighbor == destination):
@@ -60,22 +108,30 @@ class ActionMaskingWrapper(gym.Wrapper):
                 continue
 
             closer = False
-            # el wrapper calcula si moverse a un vecino deja al 
-            # agente más cerca del objetivo que quedarse donde está.
-            if targets and hasattr(self.env, "_sp_length"):
+            # primero intentar usar distancias precomputadas
+            if targets:
                 for target in targets:
                     prev_dist = dist_cache.get(target, np.inf)
-                    try:
-                        neighbor_dist = self.env._sp_length(neighbor, target)
-                    except Exception:
-                        neighbor_dist = np.inf
+                    neighbor_dist = np.inf
+                    if self._distances:
+                        neighbor_dist = self._distances.get(target, {}).get(neighbor, np.inf)
+                    elif sp_fn:
+                        try:
+                            key = (neighbor, target)
+                            if key in self._sp_cache:
+                                neighbor_dist = self._sp_cache[key]
+                            else:
+                                neighbor_dist = sp_fn(neighbor, target)
+                                self._sp_cache[key] = neighbor_dist
+                        except Exception:
+                            neighbor_dist = np.inf
                     if neighbor_dist < prev_dist:
                         closer = True
                         break
             if targets and not closer:
                 continue
 
-            if neighbor in self.recent_nodes:
+            if neighbor in recent_set:
                 continue
             if self.visit_counter.get(neighbor, 0) >= 3:
                 continue
@@ -83,7 +139,7 @@ class ActionMaskingWrapper(gym.Wrapper):
             self.action_mask[i] = True
 
         if not np.any(self.action_mask) and neighbors:
-            valid_idx = np.where(self._base_mask[:len(neighbors)])[0]
+            valid_idx = np.where(base_mask[:len(neighbors)])[0]
             if valid_idx.size > 0:
                 self.action_mask[valid_idx[0]] = True
 
@@ -110,6 +166,10 @@ class ActionMaskingWrapper(gym.Wrapper):
     def _update_cycle_tracking(self):
         self.recent_nodes.append(self.env.current_node)
         self.visit_counter[self.env.current_node] += 1
+        # mantener set para membership O(1)
+        self.recent_nodes_set.add(self.env.current_node)
+        # reconstruir set a partir del deque (deque es pequeño, coste bajo)
+        self.recent_nodes_set = set(self.recent_nodes)
 
     def _calculate_cycle_penalty(self):
         cycle_penalty = 0
@@ -137,6 +197,7 @@ class ActionMaskingWrapper(gym.Wrapper):
 
     def _initialize_cycle_tracking(self):
         self.recent_nodes = deque([self.env.current_node], maxlen=10)
+        self.recent_nodes_set = {self.env.current_node}
         self.visit_counter = defaultdict(int)
         self.visit_counter[self.env.current_node] = 1
 
@@ -183,6 +244,8 @@ def create_masked_waypoint_env(
     env_cfg: dict | None = None,
     rew_cfg: dict | None = None,
     debug: bool = False,
+    distances: dict | None = None,
+    distances_path: str | None = None,
 ):
     """
     Crea un entorno WaypointNavigationEnv usando configuración YAML.
@@ -198,4 +261,37 @@ def create_masked_waypoint_env(
         env_cfg=env_cfg or {},
         rew_cfg=rew_cfg or {},
     )
-    return ActionMaskingWrapper(env, debug=debug)
+    # si no se pasó distances_path, intentar autodescubrir en ia_ml/src/data
+    if distances_path is None:
+        data_dir = (Path(__file__).parent.parent / "data").resolve()
+        try:
+            if data_dir.exists():
+                candidates = list(data_dir.glob("*_distances.pkl"))
+                if candidates:
+                    chosen = None
+                    # intentar emparejar por nombre del grafo si está disponible
+                    graph_name = None
+                    try:
+                        graph_name = getattr(graph, "name", None)
+                    except Exception:
+                        graph_name = None
+                    if not graph_name and hasattr(graph, "graph"):
+                        try:
+                            graph_name = graph.graph.get("name")
+                        except Exception:
+                            graph_name = None
+
+                    if graph_name:
+                        for c in candidates:
+                            if graph_name in c.stem:
+                                chosen = c
+                                break
+                    if chosen is None and len(candidates) == 1:
+                        chosen = candidates[0]
+                    if chosen is not None:
+                        distances_path = str(chosen)
+        except Exception:
+            # no crítico, continuamos sin precomputed distances
+            distances_path = distances_path
+
+    return ActionMaskingWrapper(env, debug=debug, distances=distances, distances_path=distances_path)
