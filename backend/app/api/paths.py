@@ -2,8 +2,7 @@
 
 from flask import Blueprint, jsonify, request
 
-# TODO: Cuando el equipo de IA/RL implemente "find_ai_route", se debera importar ACA!
-# from ia_ml.main import find_ai_route #EJEMPLO DE IMPORTACION
+from ia_ml.src.api.main import find_ai_route
 
 paths_bp = Blueprint("paths", __name__)
 
