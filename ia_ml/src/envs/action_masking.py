@@ -49,7 +49,6 @@ class ActionMaskingWrapper(gym.Wrapper):
 
     def _update_action_mask_with_cycles(self):
         neighbors = self._neighbors()
-        # limitar vecinos ya para reducir trabajo en grafos grandes
         max_a = self.env.max_actions
         if len(neighbors) > max_a:
             neighbors = neighbors[:max_a]
@@ -74,7 +73,7 @@ class ActionMaskingWrapper(gym.Wrapper):
             cur = self.env.current_node
             for target in targets:
                 try:
-                    dist_cache[target] = self._distances.get(target, {}).get(cur, np.inf)
+                    dist_cache[target] = self._distances.get(cur, {}).get(target, np.inf)
                 except Exception:
                     dist_cache[target] = np.inf
         elif sp_fn and targets:
@@ -95,16 +94,18 @@ class ActionMaskingWrapper(gym.Wrapper):
 
         recent_set = self.recent_nodes_set
         base_mask = self._base_mask
+        any_valid = False
 
         for i, neighbor in enumerate(neighbors):
-            # i ya está acotado por el slice anterior, pero mantener seguridad
             if i >= max_a:
                 break
             if not base_mask[i]:
                 continue
 
+            # si es waypoint o destino directo, siempre válido
             if neighbor in remaining_waypoints or (not remaining_waypoints and neighbor == destination):
                 self.action_mask[i] = True
+                any_valid = True
                 continue
 
             closer = False
@@ -114,7 +115,7 @@ class ActionMaskingWrapper(gym.Wrapper):
                     prev_dist = dist_cache.get(target, np.inf)
                     neighbor_dist = np.inf
                     if self._distances:
-                        neighbor_dist = self._distances.get(target, {}).get(neighbor, np.inf)
+                        neighbor_dist = self._distances.get(neighbor, {}).get(target, np.inf)
                     elif sp_fn:
                         try:
                             key = (neighbor, target)
@@ -125,19 +126,29 @@ class ActionMaskingWrapper(gym.Wrapper):
                                 self._sp_cache[key] = neighbor_dist
                         except Exception:
                             neighbor_dist = np.inf
-                    if neighbor_dist < prev_dist:
+                    # tolerancia: permitir igual distancia o hasta 5% peor
+                    if neighbor_dist <= prev_dist * 1.05:
                         closer = True
                         break
             if targets and not closer:
                 continue
 
-            if neighbor in recent_set:
-                continue
-            if self.visit_counter.get(neighbor, 0) >= 3:
+            # evitar loops cortos, pero no bloquear si es única opción
+            if neighbor in recent_set or self.visit_counter.get(neighbor, 0) >= 3:
                 continue
 
             self.action_mask[i] = True
+            any_valid = True
 
+        # si nada quedó habilitado, liberar al menos alguna acción
+        if not any_valid:
+            for i, neighbor in enumerate(neighbors):
+                if i < len(base_mask) and base_mask[i]:
+                    self.action_mask[i] = True
+            # limpiar historial para permitir moverse
+            self.recent_nodes.clear()
+
+        # fallback final: asegurar al menos una acción válida
         if not np.any(self.action_mask) and neighbors:
             valid_idx = np.where(base_mask[:len(neighbors)])[0]
             if valid_idx.size > 0:
@@ -172,28 +183,11 @@ class ActionMaskingWrapper(gym.Wrapper):
         self.recent_nodes_set = set(self.recent_nodes)
 
     def _calculate_cycle_penalty(self):
-        cycle_penalty = 0
-         # ida y vuelta
-        if len(self.recent_nodes) >= 2:
-            if self.recent_nodes[-1] == self.recent_nodes[-2]:
-                cycle_penalty = -100  # volver directamente atrás
-                
-        if len(self.recent_nodes) >= 5:
-            recent = list(self.recent_nodes)[-5:]
-            if len(set(recent)) < 3:
-                cycle_penalty = -300
-
-        if len(self.recent_nodes) == 10:
-            recent = list(self.recent_nodes)[-5:]
-            previous = list(self.recent_nodes)[-10:-5]
-            if recent == previous:
-                cycle_penalty = max(cycle_penalty, -100)
-
+        cycle_penalty = 0.0
         visit_count = self.visit_counter[self.env.current_node]
-        if visit_count > 2:
-            cycle_penalty = max(cycle_penalty, -50 * (visit_count - 2))
-
-        return cycle_penalty
+        if visit_count > 3:
+            cycle_penalty -= 20 * (visit_count - 3)
+        return max(cycle_penalty, -300)
 
     def _initialize_cycle_tracking(self):
         self.recent_nodes = deque([self.env.current_node], maxlen=10)
@@ -261,6 +255,13 @@ def create_masked_waypoint_env(
         env_cfg=env_cfg or {},
         rew_cfg=rew_cfg or {},
     )
+    
+    # Si no se pasaron distancias explícitamente, intentar obtenerlas del grafo
+    if distances is None and hasattr(graph, "graph"):
+        graph_distances = graph.graph.get("distances")
+        if graph_distances is not None:
+            distances = graph_distances
+    
     # si no se pasó distances_path, intentar autodescubrir en ia_ml/src/data
     if distances_path is None:
         data_dir = (Path(__file__).parent.parent / "data").resolve()
