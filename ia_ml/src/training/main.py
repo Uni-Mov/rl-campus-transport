@@ -163,6 +163,8 @@ class DebugCallback(BaseCallback):
         self.last_episode_remaining_waypoints = None
         self.last_episode_destination_reached = False
         self.last_episode_current_node = None
+        self.last_episode_terminated_reason = None
+        self.last_episode_info = None
         self.episode_count = 0
         self.last_debug_step = 0
     
@@ -179,6 +181,8 @@ class DebugCallback(BaseCallback):
                 self.last_episode_remaining_waypoints = info.get("remaining_waypoints", [])
                 self.last_episode_destination_reached = info.get("terminated_reason") == "destination_reached"
                 self.last_episode_current_node = info.get("current_node", None)
+                self.last_episode_terminated_reason = info.get("terminated_reason", None)
+                self.last_episode_info = info.copy()  # Guardar info completo para debug
                 self.episode_count += 1
         
         # Mostrar debug cada debug_freq pasos
@@ -206,15 +210,29 @@ class DebugCallback(BaseCallback):
                 
                 # Mostrar si llegó al destino
                 if self.last_episode_destination_reached:
-                    print("✓ Destino final: ALCANZADO")
+                    print("destino final: ALCANZADO")
                 else:
-                    print("✗ Destino final: NO alcanzado")
+                    print("destino final: NO alcanzado")
+                
+                # Mostrar razón de terminación
+                if self.last_episode_terminated_reason:
+                    reason_display = {
+                        "destination_reached": "llegó al destino",
+                        "max_steps": "máximo de pasos alcanzado",
+                        "max_wait_steps": "máximo de pasos de espera",
+                        "dead_end": "callejón sin salida",
+                        "loop_detected": "bucle detectado",
+                        "time_limit": "límite de tiempo",
+                    }.get(self.last_episode_terminated_reason, f"ℹ {self.last_episode_terminated_reason}")
+                    print(f"razón de terminación: {reason_display}")
+                else:
+                    print("razón de terminación: No especificada")
                 
                 # Mostrar nodo final
                 if self.last_episode_path:
                     print(f"Nodo final: {self.last_episode_path[-1]}")
                 elif self.last_episode_current_node is not None:
-                    print(f"Nodo actual: {self.last_episode_current_node}")
+                    print(f"nodo actual: {self.last_episode_current_node}")
                 
                 print("=" * 80 + "\n")
             else:
