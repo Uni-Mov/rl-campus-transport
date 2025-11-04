@@ -21,7 +21,13 @@ def safe_name_from_locality(locality: str) -> str:
     return locality.replace(",", "").replace(" ", "_")
 
 def main():
-    parser = argparse.ArgumentParser(description="Precompute all-pairs distances and save as *_distances.pkl")
+    parser = argparse.ArgumentParser(description="Precompute all-pairs distances and save as *_distances.pkl",
+                                     formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+    Ejemplos:
+    python3 scripts/generate_distances.py --locality "Río Cuarto, Córdoba, Argentina"
+    python3 scripts/generate_distances.py --graph-file /path/to/graph.graphml
+        """)
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--locality", "-l", type=str, help="Locality name to download via OSMnx (e.g. 'Río Cuarto, Córdoba, Argentina')")
     group.add_argument("--graph-file", "-g", type=str, help="Path to existing .graphml file")
