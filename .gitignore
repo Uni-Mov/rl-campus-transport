@@ -4,3 +4,4 @@ cache/
 *.graphml
 .coverage
 venv/
+*.pkl
