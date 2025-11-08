@@ -72,6 +72,14 @@ class WaypointNavigationEnv(gym.Env):
         if dm is not None:
             # expected: dict[source_idx][target_idx] -> float
             self.distance_matrix = dm
+        
+        # calcular distancia máxima para normalización
+        # usar distancia euclidiana máxima como aproximación
+        self.max_distance = self._calculate_max_distance()
+        
+        # calcular valor máximo para normalización de rewards (depende de weight_name)
+        # se inicializará después de conocer weight_name en _init_reward_params
+        self.max_reward_value = None
 
     # espacios de accion y observacion
     def _init_spaces(self):
@@ -94,6 +102,10 @@ class WaypointNavigationEnv(gym.Env):
         self.waypoint_bonus = rew_cfg.get("waypoint_bonus", 50.0)
         self.destination_bonus = rew_cfg.get("destination_bonus", 200.0)
         self.no_progress_penalty = rew_cfg.get("no_progress_penalty", 2.0)
+        
+        # calcular valor máximo para normalización de rewards
+        # si weight_name es "travel_time", usar tiempo máximo; si es "length" o distancia, usar max_distance
+        self.max_reward_value = self._calculate_max_reward_value()
 
     # variables de estado
     def _reset_state_vars(self):
@@ -164,25 +176,33 @@ class WaypointNavigationEnv(gym.Env):
         return dist_prev - dist_curr
 
     def _compute_reward(self, travel_time: float, progress: float) -> float:
+        # normalizar travel_time y progress usando max_reward_value
+        # max_reward_value está en las mismas unidades que travel_time y progress
+        norm_factor = self.max_reward_value if self.max_reward_value and self.max_reward_value > 0 else 1.0
+        
+        travel_time_norm = travel_time / norm_factor
+        progress_norm = progress / norm_factor
+        
         reward = 0.0
-        reward -= self.move_cost_coef * travel_time
-        reward += self.progress_coef * progress
+        reward -= self.move_cost_coef * travel_time_norm
+        reward += self.progress_coef * progress_norm
 
+        # normalizar bonuses y penalizaciones usando norm_factor para mantener escala consistente
         # waypoint alcanzado
         if self.current_node in self.remaining_waypoints:
             self.remaining_waypoints.remove(self.current_node)
             self.visited_waypoints.add(self.current_node)
-            reward += self.waypoint_bonus
+            reward += self.waypoint_bonus / norm_factor
 
         # destino alcanzado
         if self.current_node == self.destination:
-            reward += self.destination_bonus
+            reward += self.destination_bonus / norm_factor
 
         # penalizaciones
         if self.path_history.count(self.current_node) > 2:
-            reward -= self.anti_loop_penalty
+            reward -= self.anti_loop_penalty / norm_factor
         if progress <= 0:
-            reward -= self.no_progress_penalty
+            reward -= self.no_progress_penalty / norm_factor
 
         return reward
 
@@ -261,6 +281,92 @@ class WaypointNavigationEnv(gym.Env):
         v_data = self.graph.nodes[v]
         # La distancia euclidiana entre dos puntos es la longitud del segmento de línea entre ellos. Se puede calcular a partir de las coordenadas cartesianas de los puntos utilizando el teorema de Pitágoras.
         return ((u_data['x'] - v_data['x'])**2 + (u_data['y'] - v_data['y'])**2)**0.5
+    
+    def _calculate_max_distance(self) -> float:
+        """Calcula la distancia máxima en el grafo para normalización.
+        
+        Usa la distancia euclidiana máxima entre nodos como aproximación.
+        Si hay una matriz de distancias precalculada, usa el máximo de esa.
+        """
+        # si hay matriz de distancias, calcular máximo de ahí
+        if self.distance_matrix is not None:
+            try:
+                max_dist = 0.0
+                for source_dict in self.distance_matrix.values():
+                    if isinstance(source_dict, dict):
+                        for dist in source_dict.values():
+                            if isinstance(dist, (int, float)) and dist != np.inf:
+                                max_dist = max(max_dist, float(dist))
+                if max_dist > 0:
+                    return max_dist
+            except Exception:
+                pass
+        
+        # calcular distancia euclidiana máxima entre todos los nodos
+        nodes = list(self.graph.nodes(data=True))
+        if len(nodes) < 2:
+            return 1.0
+        
+        max_dist = 0.0
+        for i, (u, u_data) in enumerate(nodes):
+            ux = float(u_data.get("x", 0.0))
+            uy = float(u_data.get("y", 0.0))
+            # solo comparar con nodos siguientes para eficiencia
+            for v, v_data in nodes[i+1:]:
+                vx = float(v_data.get("x", 0.0))
+                vy = float(v_data.get("y", 0.0))
+                dist = ((ux - vx)**2 + (uy - vy)**2)**0.5
+                max_dist = max(max_dist, dist)
+        
+        return max_dist if max_dist > 0 else 1.0
+    
+    def _calculate_max_reward_value(self) -> float:
+        """Calcula el valor máximo para normalizar rewards.
+        
+        Si weight_name es "travel_time", calcula tiempo máximo del grafo.
+        Si es "length" o distancia, usa max_distance.
+        """
+        # si weight_name es distancia/length, usar max_distance
+        if self.weight_name in ("length", "distance"):
+            return self.max_distance
+        
+        # si es travel_time, calcular tiempo máximo del grafo
+        if self.weight_name == "travel_time":
+            # intentar obtener de la matriz de distancias si existe
+            if self.distance_matrix is not None:
+                try:
+                    max_val = 0.0
+                    for source_dict in self.distance_matrix.values():
+                        if isinstance(source_dict, dict):
+                            for val in source_dict.values():
+                                if isinstance(val, (int, float)) and val != np.inf:
+                                    max_val = max(max_val, float(val))
+                    if max_val > 0:
+                        return max_val
+                except Exception:
+                    pass
+            
+            # calcular tiempo máximo desde los edges del grafo
+            max_time = 0.0
+            for u, v, key, attrs in self.graph.edges(keys=True, data=True):
+                travel_time = attrs.get("travel_time")
+                if travel_time is not None:
+                    try:
+                        max_time = max(max_time, float(travel_time))
+                    except (ValueError, TypeError):
+                        pass
+            
+            # si no hay travel_time en edges, estimar desde length y velocidad
+            if max_time == 0.0:
+                # estimar tiempo máximo usando distancia máxima y velocidad mínima razonable
+                # velocidad mínima: 5 km/h = 1.39 m/s (peatonal)
+                min_speed_ms = 1.39
+                max_time = self.max_distance / min_speed_ms if min_speed_ms > 0 else self.max_distance
+            
+            return max_time if max_time > 0 else self.max_distance
+        
+        # default: usar max_distance
+        return self.max_distance
         
     # devuelve un diccionario con la información de la arista entre dos nodos
     def _edge_data(self, u: int, v: int) -> Dict[str, Any]:
@@ -288,15 +394,20 @@ class WaypointNavigationEnv(gym.Env):
 
     # distancia al destino y progreso normalizado
         dist_dest = float(self._sp_length(self.current_node, self.destination))
+        
+        # normalizar distancias usando distancia máxima
+        dist_dest_norm = dist_dest / self.max_distance if self.max_distance > 0 else 0.0
+        dist_wp_norm = dist_wp / self.max_distance if self.max_distance > 0 else 0.0
+        
         scalar_feats = np.array(
-            [dist_dest, dist_wp, self.steps_taken / self.max_steps],
+            [dist_dest_norm, dist_wp_norm, self.steps_taken / self.max_steps],
             dtype=np.float32,
         )
 
     # vector de observación final
-    # que tan lejos está del destino,
-    # que tan lejos está del siguiente objetivo intermedio,
-    # cuanto le queda antes de que el episodio termine.
+    # que tan lejos está del destino (normalizado),
+    # que tan lejos está del siguiente objetivo intermedio (normalizado),
+    # cuanto le queda antes de que el episodio termine (normalizado).
         return np.concatenate([cur_emb, dest_emb, wp_emb, scalar_feats]).astype(np.float32)
 
 

@@ -99,7 +99,7 @@ def indices_to_osm_nodes(path_indices, idx_to_node):
             continue
     return converted
 
-    def load_subgraph_from_file(graphml_path: str):
+def load_subgraph_from_file(graphml_path: str):
     """Carga un subgrafo desde un archivo .graphml y lo relabela a índices.
     
     Args:
