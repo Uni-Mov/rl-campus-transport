@@ -11,6 +11,7 @@ import torch
 
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import EvalCallback, StopTrainingOnNoModelImprovement
+from stable_baselines3.common.monitor import Monitor
 from src.envs import create_masked_waypoint_env 
 from src.data.download_graph import (
     get_graph_relabel,
@@ -110,7 +111,7 @@ def build_policy_kwargs(ppo_cfg: Dict[str, Any]) -> Dict[str, Any]:
     return dict(net_arch=list(net_arch)) if net_arch is not None else {}
 
 
-def build_model(env, ppo_cfg: Dict[str, Any], policy_kwargs: Dict[str, Any], device: str) -> PPO:
+def build_model(env, ppo_cfg: Dict[str, Any], policy_kwargs: Dict[str, Any], device: str, tensorboard_log: str | None = None) -> PPO:
     policy = ppo_cfg.get("policy", "MlpPolicy")
     return PPO(
         policy,
@@ -125,6 +126,7 @@ def build_model(env, ppo_cfg: Dict[str, Any], policy_kwargs: Dict[str, Any], dev
         policy_kwargs=policy_kwargs,
         verbose=get_int(ppo_cfg, "verbose", 1),
         device=device,
+        tensorboard_log=tensorboard_log,
     )
 
 
@@ -188,15 +190,33 @@ def main() -> None:
     graph = load_graph_from_cfg(cfg)
     start_node, destination, waypoints, max_steps = build_navigation_params(graph)
 
+    # configurar directorios de logs
+    train_log_dir = eval_cfg.get("train_log_dir", "./logs/training/")
+    eval_log_dir = eval_cfg.get("log_path", "./logs/results_masked/")
+    tensorboard_log = ppo_cfg.get("tensorboard_log") or eval_cfg.get("tensorboard_log", "./logs/tensorboard/")
+    
+    # crear directorios si no existen
+    os.makedirs(train_log_dir, exist_ok=True)
+    os.makedirs(eval_log_dir, exist_ok=True)
+    if tensorboard_log:
+        os.makedirs(tensorboard_log, exist_ok=True)
+
     # construir entornos 
-    env = make_env(graph, start_node, waypoints, destination, environment_cfg, rewards_cfg)
-    eval_env = make_env(graph, start_node, waypoints, destination, environment_cfg, rewards_cfg)
+    base_env = make_env(graph, start_node, waypoints, destination, environment_cfg, rewards_cfg)
+    base_eval_env = make_env(graph, start_node, waypoints, destination, environment_cfg, rewards_cfg)
+    
+    # envolver entornos con Monitor para registrar recompensas
+    env = Monitor(base_env, train_log_dir)
+    eval_env = Monitor(base_eval_env, eval_log_dir)
 
     # modelo
     device = resolve_device(ppo_cfg)
     print(f"Usando dispositivo: {device}")
+    if tensorboard_log:
+        print(f"TensorBoard logs: {tensorboard_log}")
+        print("  Para ver las métricas: tensorboard --logdir " + tensorboard_log)
     policy_kwargs = build_policy_kwargs(ppo_cfg)
-    model = build_model(env, ppo_cfg, policy_kwargs, device)
+    model = build_model(env, ppo_cfg, policy_kwargs, device, tensorboard_log=tensorboard_log)
 
     # entrenamiento
     total_timesteps = get_int(ppo_cfg, "total_timesteps", 250_000)
