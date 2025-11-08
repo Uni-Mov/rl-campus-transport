@@ -99,3 +99,39 @@ def indices_to_osm_nodes(path_indices, idx_to_node):
             continue
     return converted
 
+    def load_subgraph_from_file(graphml_path: str):
+    """Carga un subgrafo desde un archivo .graphml y lo relabela a índices.
+    
+    Args:
+        graphml_path: Ruta al archivo .graphml
+        
+    Returns:
+        Tuple[G_relabeled, node_to_idx, idx_to_node]
+    """
+    G = load_graph_from_graphml(graphml_path)
+    
+    # Intentar cargar distancias si existen (mismo nombre pero .pkl)
+    distances_path = graphml_path.replace('.graphml', '_distances.pkl')
+    distances = load_distances_if_present(distances_path)
+    if distances is not None:
+        G.graph["distances"] = distances
+    
+    G_relabel, node_to_idx, idx_to_node = relabel_nodes_to_indices(G)
+    
+    # Convertir distancias de IDs originales a índices relabeled
+    if "distances" in G.graph:
+        converted = {}
+        for orig_u, dist_dict in G.graph["distances"].items():
+            u_idx = node_to_idx.get(orig_u)
+            if u_idx is None:
+                continue
+            converted[u_idx] = {}
+            for orig_v, d in dist_dict.items():
+                v_idx = node_to_idx.get(orig_v)
+                if v_idx is None:
+                    continue
+                converted[u_idx][v_idx] = float(d)
+        G_relabel.graph["distances"] = converted
+    
+    return G_relabel, node_to_idx, idx_to_node
+
