@@ -59,7 +59,7 @@ def main():
             print("Aborting.")
             return
 
-    print(f"[INFO] Computing all-pairs shortest path lengths (weight='{args.weight}'). Esto puede tardar y usar mucha RAM...")
+    print(f"[INFO] Computing all-pairs shortest path lengths (weight='{args.weight}').")
     precompute_and_save_distances(G, str(out_path), weight=args.weight)
     print("[OK] Distances saved to:", out_path)
 

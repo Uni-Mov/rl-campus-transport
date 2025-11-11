@@ -15,9 +15,10 @@ from stable_baselines3 import PPO
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from src.envs import create_masked_waypoint_env 
-from src.data.download_graph import get_graph_relabel  
+from src.data.download_graph import get_graph_relabel, load_subgraph_from_file  
 from src.training.main import build_node_embeddings  
-from src.utils.config_loader import load_config 
+from src.utils.config_loader import load_config
+import networkx as nx 
 
 
 def parse_args() -> argparse.Namespace:
@@ -35,7 +36,11 @@ def parse_args() -> argparse.Namespace:
 
 def run_episode(
     *,
-    place: str,
+    place: Optional[str] = None,
+    subgraph_path: Optional[str] = None,
+    graph: Optional[nx.MultiDiGraph] = None,
+    node_to_idx: Optional[Dict] = None,
+    idx_to_node: Optional[Dict] = None,
     model_path: str,
     start: int,
     waypoints: Optional[List[int]] = None,
@@ -44,10 +49,36 @@ def run_episode(
     deterministic: bool = True,
     verbose: bool = False,
 ) -> Dict[str, object]:
-    """Ejecuta un episodio y devuelve estadisticas y recorrido."""
+    """Ejecuta un episodio y devuelve estadisticas y recorrido.
+    
+    Args:
+        place: localidad para cargar el grafo (si no se proporciona graph o subgraph_path)
+        subgraph_path: ruta a un archivo .graphml del subgrafo
+        graph: grafo directamente (si ya está cargado)
+        node_to_idx: mapeo de nodos a índices (requerido si se pasa graph)
+        idx_to_node: mapeo de índices a nodos (requerido si se pasa graph)
+        model_path: ruta al modelo PPO
+        start: nodo inicial
+        waypoints: waypoints a visitar
+        destination: nodo destino
+        max_steps: pasos máximos
+        deterministic: usar política determinística
+        verbose: mostrar logs
+    """
 
     waypoints = list(waypoints or [])
-    graph, node_to_idx, idx_to_node = get_graph_relabel(place)
+    
+    # Cargar grafo según el método proporcionado
+    if graph is not None:
+        if node_to_idx is None or idx_to_node is None:
+            raise ValueError("node_to_idx e idx_to_node son requeridos cuando se proporciona graph")
+    elif subgraph_path is not None:
+        graph, node_to_idx, idx_to_node = load_subgraph_from_file(subgraph_path)
+    elif place is not None:
+        graph, node_to_idx, idx_to_node = get_graph_relabel(place)
+    else:
+        raise ValueError("Debe proporcionarse place, subgraph_path o graph")
+    
     n_nodes = graph.number_of_nodes()
 
     destination = destination if destination is not None and destination >= 0 else (n_nodes - 1)
@@ -67,7 +98,7 @@ def run_episode(
     CONFIG_PATH = Path(__file__).resolve().parents[1] / "envs" / "config" / "config.yaml"
     cfg = load_config(CONFIG_PATH)
     environment_cfg, rewards_cfg = cfg["environment"], cfg["rewards"]
-    env = create_masked_waypoint_env(graph, waypoints, destination, environment_cfg, rewards_cfg)
+    env = create_masked_waypoint_env(graph, waypoints, start, destination, environment_cfg, rewards_cfg)
 
     if not os.path.exists(model_path):
         raise FileNotFoundError(f"No se encontro el modelo en {model_path}")
