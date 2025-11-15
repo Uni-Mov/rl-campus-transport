@@ -3,6 +3,7 @@ import numpy as np
 import pickle
 import os
 from collections import deque, defaultdict
+from src.utils.distances import precalculate_distances
 from .waypoint_navigation import WaypointNavigationEnv
 from pathlib import Path
 
@@ -126,9 +127,18 @@ class ActionMaskingWrapper(gym.Wrapper):
                                 self._sp_cache[key] = neighbor_dist
                         except Exception:
                             neighbor_dist = np.inf
-                    # tolerancia: permitir igual distancia o hasta 5% peor
-                    if neighbor_dist <= prev_dist * 1.05:
+                    # requerir mejora ligera (evitar empates/oscillaciones): permitir hasta 0.5% peor
+                    # usar 0.995 para preferir movimientos que reduzcan la distancia
+                    try:
+                        if np.isfinite(prev_dist) and np.isfinite(neighbor_dist):
+                            if neighbor_dist <= prev_dist * 0.995:
+                                closer = True
+                        else:
+                            # fallback: si no hay datos, permitir
+                            closer = True
+                    except Exception:
                         closer = True
+                    if closer:
                         break
             if targets and not closer:
                 continue
@@ -334,5 +344,48 @@ def create_masked_waypoint_env(
         except Exception:
             # no crítico, continuamos sin precomputed distances
             distances_path = distances_path
+
+    # Si no se encontró distances_path ni se pasaron distancias, intentar precalcular y cachear
+    if distances is None and distances_path is None:
+        try:
+            # intentar obtener un nombre identificador para el grafo
+            graph_name = None
+            try:
+                graph_name = getattr(graph, "name", None)
+            except Exception:
+                graph_name = None
+            if not graph_name and hasattr(graph, "graph"):
+                try:
+                    graph_name = graph.graph.get("name")
+                except Exception:
+                    graph_name = None
+
+            fname = (graph_name or "graph") + "_distances.pkl"
+            chosen_path = (Path(__file__).parent.parent / "data" / fname).resolve()
+            # si no existe, precalcular (esto puede tardar para grafos grandes)
+            if not chosen_path.exists():
+                # precalculate_distances espera un NetworkX graph
+                print(f"[distances] No distance cache found; precalculating and saving to {chosen_path} (this may take time)...")
+                # ensure data dir exists
+                chosen_path.parent.mkdir(parents=True, exist_ok=True)
+                shortest_paths = precalculate_distances(graph, cache_path=str(chosen_path))
+                distances = shortest_paths
+                distances_path = str(chosen_path)
+            else:
+                # cargar cache existente
+                try:
+                    with open(str(chosen_path), "rb") as fh:
+                        distances = pickle.load(fh)
+                        distances_path = str(chosen_path)
+                except Exception:
+                    # si falla la carga, intentar recalcular
+                    print("[distances] Failed to load existing distances cache; recalculating...")
+                    shortest_paths = precalculate_distances(graph, cache_path=str(chosen_path))
+                    distances = shortest_paths
+                    distances_path = str(chosen_path)
+        except Exception as e:
+            if getattr(globals().get("__builtins__", {}), "print", None):
+                print(f"[distances] Precompute attempt failed: {e}")
+            distances = distances
 
     return ActionMaskingWrapper(env, debug=debug, distances=distances, distances_path=distances_path)
