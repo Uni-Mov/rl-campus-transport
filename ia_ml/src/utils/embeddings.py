@@ -246,8 +246,8 @@ def build_node_embeddings(graph: nx.MultiDiGraph) -> Dict[str, np.ndarray]:
     - intersection_density y road_hierarchy
     
     formato del embedding:
-    [x_norm, y_norm, deg_norm, in_deg, out_deg, neighbor_count,
-     avg_neighbor_deg, max_neighbor_deg, min_neighbor_deg, neighbor_deg_std,
+    [x_norm, y_norm, deg_norm, in_deg_norm, out_deg_norm, neighbor_count_norm,
+     avg_neighbor_deg_norm, max_neighbor_deg_norm, min_neighbor_deg_norm, neighbor_deg_std_norm,
      degree_centrality, betweenness_approx, network_density,
      length_avg, maxspeed_norm_avg, lanes_norm_avg, highway_code_avg,
      surface_score_avg, oneway_flag_avg, travel_time_norm_avg,
@@ -290,17 +290,25 @@ def build_node_embeddings(graph: nx.MultiDiGraph) -> Dict[str, np.ndarray]:
         deg = degrees.get(node, 0)
         deg_norm = deg / max_degree if max_degree > 0 else 0.0
 
-        # directed measures if available
+        # directed measures if available (normalizados)
         in_deg = graph.in_degree(node) if hasattr(graph, "in_degree") else graph.degree(node)
         out_deg = graph.out_degree(node) if hasattr(graph, "out_degree") else graph.degree(node)
+        in_deg_norm = float(in_deg) / max_degree if max_degree > 0 else 0.0
+        out_deg_norm = float(out_deg) / max_degree if max_degree > 0 else 0.0
 
         neighbors = list(graph.neighbors(node))
         neighbor_count = len(neighbors)
+        neighbor_count_norm = float(neighbor_count) / max_degree if max_degree > 0 else 0.0
         neighbor_degs = [degrees.get(n, 0) for n in neighbors] if neighbors else [0]
         avg_neighbor_deg = float(np.mean(neighbor_degs)) if neighbor_degs else 0.0
         max_neighbor_deg = float(np.max(neighbor_degs)) if neighbor_degs else 0.0
         min_neighbor_deg = float(np.min(neighbor_degs)) if neighbor_degs else 0.0
         neighbor_deg_std = float(np.std(neighbor_degs)) if neighbor_degs else 0.0
+        # normalizar medidas de vecinos por grado máximo
+        avg_neighbor_deg_norm = avg_neighbor_deg / max_degree if max_degree > 0 else 0.0
+        max_neighbor_deg_norm = max_neighbor_deg / max_degree if max_degree > 0 else 0.0
+        min_neighbor_deg_norm = min_neighbor_deg / max_degree if max_degree > 0 else 0.0
+        neighbor_deg_std_norm = neighbor_deg_std / max_degree if max_degree > 0 else 0.0
 
         degree_centrality = deg / (n_nodes - 1) if n_nodes > 1 else 0.0
         betweenness_approx = neighbor_count / n_nodes if n_nodes > 0 else 0.0
@@ -335,10 +343,10 @@ def build_node_embeddings(graph: nx.MultiDiGraph) -> Dict[str, np.ndarray]:
 
         vec = np.array(
             [
-                # estructurales (13 features)
-                x, y, deg_norm, float(in_deg), float(out_deg),
-                float(neighbor_count), avg_neighbor_deg, max_neighbor_deg,
-                min_neighbor_deg, neighbor_deg_std, degree_centrality,
+                # estructurales (13 features) - todas normalizadas
+                x, y, deg_norm, in_deg_norm, out_deg_norm,
+                neighbor_count_norm, avg_neighbor_deg_norm, max_neighbor_deg_norm,
+                min_neighbor_deg_norm, neighbor_deg_std_norm, degree_centrality,
                 betweenness_approx, network_density,
                 # edge features promediadas (7 features)
                 length_avg, maxspeed_norm_avg, lanes_norm_avg,

@@ -10,7 +10,13 @@ import numpy as np
 import torch
 
 from stable_baselines3 import PPO
-from stable_baselines3.common.callbacks import EvalCallback, StopTrainingOnNoModelImprovement
+from stable_baselines3.common.callbacks import (
+    EvalCallback, 
+    StopTrainingOnNoModelImprovement, 
+    BaseCallback,
+    CallbackList
+)
+from stable_baselines3.common.monitor import Monitor
 from src.envs import create_masked_waypoint_env 
 from src.data.download_graph import (
     get_graph_relabel,
@@ -87,7 +93,23 @@ def load_graph_from_cfg(cfg: Dict[str, Any]) -> nx.MultiDiGraph:
             distances = load_distances_if_present(distances_path)
             if distances is not None:
                 G_osm.graph["distances"] = distances
-        G_relabeled, _, _ = relabel_nodes_to_indices(G_osm)
+        G_relabeled, node_to_idx, idx_to_node = relabel_nodes_to_indices(G_osm)
+        
+        # Convertir distancias de IDs originales a índices relabeled
+        if "distances" in G_osm.graph:
+            converted = {}
+            for orig_u, dist_dict in G_osm.graph["distances"].items():
+                u_idx = node_to_idx.get(orig_u)
+                if u_idx is None:
+                    continue
+                converted[u_idx] = {}
+                for orig_v, d in dist_dict.items():
+                    v_idx = node_to_idx.get(orig_v)
+                    if v_idx is None:
+                        continue
+                    converted[u_idx][v_idx] = float(d)
+            G_relabeled.graph["distances"] = converted
+        
         return G_relabeled
     place = graph_cfg.get("place") or "Río Cuarto, Cordoba, Argentina"
     print(f"Preparando grafo para: {place}")
@@ -110,7 +132,7 @@ def build_policy_kwargs(ppo_cfg: Dict[str, Any]) -> Dict[str, Any]:
     return dict(net_arch=list(net_arch)) if net_arch is not None else {}
 
 
-def build_model(env, ppo_cfg: Dict[str, Any], policy_kwargs: Dict[str, Any], device: str) -> PPO:
+def build_model(env, ppo_cfg: Dict[str, Any], policy_kwargs: Dict[str, Any], device: str, tensorboard_log: str | None = None) -> PPO:
     policy = ppo_cfg.get("policy", "MlpPolicy")
     return PPO(
         policy,
@@ -125,17 +147,111 @@ def build_model(env, ppo_cfg: Dict[str, Any], policy_kwargs: Dict[str, Any], dev
         policy_kwargs=policy_kwargs,
         verbose=get_int(ppo_cfg, "verbose", 1),
         device=device,
+        tensorboard_log=tensorboard_log,
     )
 
 
-def build_callbacks(eval_env, eval_cfg: Dict[str, Any]) -> EvalCallback:
+class DebugCallback(BaseCallback):
+    """
+    Callback para mostrar información de debug cada 1000 pasos:
+    - Path recorrido
+    - Waypoints que faltan
+    - Si pasó por el destino final
+    """
+    def __init__(self, verbose: int = 0, debug_freq: int = 1000):
+        super().__init__(verbose)
+        self.debug_freq = debug_freq
+        self.last_episode_path = None
+        self.last_episode_remaining_waypoints = None
+        self.last_episode_destination_reached = False
+        self.last_episode_current_node = None
+        self.last_episode_terminated_reason = None
+        self.last_episode_info = None
+        self.episode_count = 0
+        self.last_debug_step = 0
+    
+    def _on_step(self) -> bool:
+        # Acceder a información del paso actual
+        infos = self.locals.get("infos", [])
+        dones = self.locals.get("dones", [])
+        
+        # Verificar si el episodio terminó (en cualquier vectorizado)
+        for i, (done, info) in enumerate(zip(dones, infos)):
+            if done or info.get("TimeLimit.truncated", False):
+                # Guardar información del episodio que terminó
+                self.last_episode_path = info.get("path", [])
+                self.last_episode_remaining_waypoints = info.get("remaining_waypoints", [])
+                self.last_episode_destination_reached = info.get("terminated_reason") == "destination_reached"
+                self.last_episode_current_node = info.get("current_node", None)
+                self.last_episode_terminated_reason = info.get("terminated_reason", None)
+                self.last_episode_info = info.copy()  # Guardar info completo para debug
+                self.episode_count += 1
+        
+        # Mostrar debug cada debug_freq pasos
+        if self.num_timesteps - self.last_debug_step >= self.debug_freq:
+            self.last_debug_step = self.num_timesteps
+            
+            # Si tenemos información del último episodio, mostrarla
+            if self.last_episode_path is not None:
+                print("\n" + "=" * 80)
+                print(f"[DEBUG] Paso {self.num_timesteps} | Episodio #{self.episode_count}")
+                print("=" * 80)
+                
+                # Mostrar path (truncar si es muy largo)
+                path_str = str(self.last_episode_path)
+                if len(path_str) > 150:
+                    path_str = path_str[:150] + "..."
+                print(f"Path recorrido: {path_str}")
+                print(f"Longitud del path: {len(self.last_episode_path)} nodos")
+                
+                # Mostrar waypoints restantes
+                if self.last_episode_remaining_waypoints:
+                    print(f"Waypoints pendientes: {self.last_episode_remaining_waypoints}")
+                else:
+                    print("Waypoints pendientes: [] (todos completados)")
+                
+                # Mostrar si llegó al destino
+                if self.last_episode_destination_reached:
+                    print("destino final: ALCANZADO")
+                else:
+                    print("destino final: NO alcanzado")
+                
+                # Mostrar razón de terminación
+                if self.last_episode_terminated_reason:
+                    reason_display = {
+                        "destination_reached": "llegó al destino",
+                        "max_steps": "máximo de pasos alcanzado",
+                        "max_wait_steps": "máximo de pasos de espera",
+                        "dead_end": "callejón sin salida",
+                        "loop_detected": "bucle detectado",
+                        "time_limit": "límite de tiempo",
+                    }.get(self.last_episode_terminated_reason, f"ℹ {self.last_episode_terminated_reason}")
+                    print(f"razón de terminación: {reason_display}")
+                else:
+                    print("razón de terminación: No especificada")
+                
+                # Mostrar nodo final
+                if self.last_episode_path:
+                    print(f"Nodo final: {self.last_episode_path[-1]}")
+                elif self.last_episode_current_node is not None:
+                    print(f"nodo actual: {self.last_episode_current_node}")
+                
+                print("=" * 80 + "\n")
+            else:
+                # Si no hay información aún, mostrar mensaje
+                print(f"\n[DEBUG] Paso {self.num_timesteps} - Esperando información del primer episodio...\n")
+        
+        return True
+
+
+def build_callbacks(eval_env, eval_cfg: Dict[str, Any], debug_freq: int = 1000) -> Tuple[EvalCallback, DebugCallback]:
     early_cfg = eval_cfg.get("early_stop", {})
     stop_callback = StopTrainingOnNoModelImprovement(
         max_no_improvement_evals=get_int(early_cfg, "max_no_improvement_evals", 8),
         min_evals=get_int(early_cfg, "min_evals", 3),
         verbose=get_int(early_cfg, "verbose", 1),
     )
-    return EvalCallback(
+    eval_callback = EvalCallback(
         eval_env,
         best_model_save_path=eval_cfg.get("best_model_save_path", "./logs/best_model_masked/"),
         log_path=eval_cfg.get("log_path", "./logs/results_masked/"),
@@ -145,6 +261,8 @@ def build_callbacks(eval_env, eval_cfg: Dict[str, Any]) -> EvalCallback:
         callback_after_eval=stop_callback,
         verbose=get_int(eval_cfg, "verbose", 1),
     )
+    debug_callback = DebugCallback(verbose=1, debug_freq=debug_freq)
+    return eval_callback, debug_callback
 
 
 def demo_episode(env, model: PPO, waypoints: list[int], destination: int, max_steps: int) -> None:
@@ -188,21 +306,40 @@ def main() -> None:
     graph = load_graph_from_cfg(cfg)
     start_node, destination, waypoints, max_steps = build_navigation_params(graph)
 
+    # configurar directorios de logs
+    train_log_dir = eval_cfg.get("train_log_dir", "./logs/training/")
+    eval_log_dir = eval_cfg.get("log_path", "./logs/results_masked/")
+    tensorboard_log = ppo_cfg.get("tensorboard_log") or eval_cfg.get("tensorboard_log", "./logs/tensorboard/")
+    
+    # crear directorios si no existen
+    os.makedirs(train_log_dir, exist_ok=True)
+    os.makedirs(eval_log_dir, exist_ok=True)
+    if tensorboard_log:
+        os.makedirs(tensorboard_log, exist_ok=True)
+
     # construir entornos 
-    env = make_env(graph, start_node, waypoints, destination, environment_cfg, rewards_cfg)
-    eval_env = make_env(graph, start_node, waypoints, destination, environment_cfg, rewards_cfg)
+    base_env = make_env(graph, start_node, waypoints, destination, environment_cfg, rewards_cfg)
+    base_eval_env = make_env(graph, start_node, waypoints, destination, environment_cfg, rewards_cfg)
+    
+    # envolver entornos con Monitor para registrar recompensas
+    env = Monitor(base_env, train_log_dir)
+    eval_env = Monitor(base_eval_env, eval_log_dir)
 
     # modelo
     device = resolve_device(ppo_cfg)
     print(f"Usando dispositivo: {device}")
+    if tensorboard_log:
+        print(f"TensorBoard logs: {tensorboard_log}")
+        print("  Para ver las métricas: tensorboard --logdir " + tensorboard_log)
     policy_kwargs = build_policy_kwargs(ppo_cfg)
-    model = build_model(env, ppo_cfg, policy_kwargs, device)
+    model = build_model(env, ppo_cfg, policy_kwargs, device, tensorboard_log=tensorboard_log)
 
     # entrenamiento
     total_timesteps = get_int(ppo_cfg, "total_timesteps", 250_000)
     # callbacks
-    eval_callback = build_callbacks(eval_env, eval_cfg)
-    model.learn(total_timesteps=total_timesteps, callback=eval_callback, progress_bar=True)
+    eval_callback, debug_callback = build_callbacks(eval_env, eval_cfg, debug_freq=1000)
+    callback_list = CallbackList([eval_callback, debug_callback])
+    model.learn(total_timesteps=total_timesteps, callback=callback_list, progress_bar=True)
     model.save("ppo_waypoint_masked")
 
     # demo breve
