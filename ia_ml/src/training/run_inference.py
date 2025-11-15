@@ -24,6 +24,7 @@ import networkx as nx
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Generar un camino usando un modelo PPO entrenado")
     parser.add_argument("--place", type=str, default="Rio Cuarto, Cordoba, Argentina", help="Localidad a cargar")
+    parser.add_argument("--subgraph-path", type=str, default=None, help="Ruta a un archivo .graphml del subgrafo (sobrescribe --place)")
     parser.add_argument("--model-path", type=str, default="ppo_waypoint_masked.zip", help="Ruta al modelo .zip")
     parser.add_argument("--start", type=int, default=0, help="Nodo inicial")
     parser.add_argument("--waypoints", type=int, nargs="*", default=[], help="Waypoints a visitar (orden libre)")
@@ -157,6 +158,7 @@ def main() -> None:
     args = parse_args()
     result = run_episode(
         place=args.place,
+        subgraph_path=args.subgraph_path,
         model_path=args.model_path,
         start=args.start,
         waypoints=args.waypoints,
