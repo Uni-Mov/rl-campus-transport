@@ -18,6 +18,7 @@ from stable_baselines3.common.callbacks import (
 )
 from stable_baselines3.common.monitor import Monitor
 from src.envs import create_masked_waypoint_env 
+from src.envs.reward_normalizer import RewardNormalizer
 from src.data.download_graph import (
     get_graph_relabel,
     load_graph_from_graphml,
@@ -29,7 +30,11 @@ from src.utils.embeddings import build_node_embeddings
 
 
 def make_env(graph, start_node, waypoints, destination, environment_cfg: Dict, rewards_cfg: Dict):
-    return create_masked_waypoint_env(graph, waypoints, start_node, destination, environment_cfg, rewards_cfg)
+    base = create_masked_waypoint_env(graph, waypoints, start_node, destination, environment_cfg, rewards_cfg)
+    gamma = get_float(rewards_cfg, "norm_gamma", 0.99)
+    clip = get_float(rewards_cfg, "norm_clip", 10.0)
+    scale = get_float(rewards_cfg, "norm_scale", 1.0)
+    return RewardNormalizer(base, gamma=gamma, clip_range=clip, scale=scale)
 
 
 def get_config_path() -> Path:
@@ -264,6 +269,22 @@ def build_callbacks(eval_env, eval_cfg: Dict[str, Any], debug_freq: int = 1000) 
     debug_callback = DebugCallback(verbose=1, debug_freq=debug_freq)
     return eval_callback, debug_callback
 
+def unwrap_env(env):
+    """Devuelve el env interno más profundo (desempaqueta wrappers tipo Monitor, RewardNormalizer, etc.)."""
+    e = env
+    # algunos wrappers usan `.env`, otros `.unwrapped` — priorizamos `.env`
+    while True:
+        if hasattr(e, "env"):
+            e = getattr(e, "env")
+            continue
+        if hasattr(e, "unwrapped") and e is not getattr(e, "unwrapped"):
+            try:
+                e = getattr(e, "unwrapped")
+                continue
+            except Exception:
+                pass
+        break
+    return e
 
 def demo_episode(env, model: PPO, waypoints: list[int], destination: int, max_steps: int) -> None:
     obs, info = env.reset()
@@ -271,7 +292,10 @@ def demo_episode(env, model: PPO, waypoints: list[int], destination: int, max_st
     truncated = False
     total_reward = 0.0
 
-    print(f"Inicio: nodo {env.current_node}")
+    inner = unwrap_env(env)
+    # usar el env desempaquetado para acceder a atributos como current_node
+    start_node = getattr(inner, "current_node", None)
+    print(f"Inicio: nodo {start_node}")
     print(f"Objetivo: {waypoints} -> {destination}")
     print(f"Max steps: {max_steps}\n")
 
@@ -281,7 +305,8 @@ def demo_episode(env, model: PPO, waypoints: list[int], destination: int, max_st
         total_reward += reward
         if step < 15 or done or truncated:
             mask_applied = info.get("masking_applied", 0)
-            print(f" paso {step + 1}: nodo {env.current_node}, reward={reward:.2f}, mask={mask_applied}")
+            current_node = getattr(inner, "current_node", None)
+            print(f" paso {step + 1}: nodo {current_node}, reward={reward:.2f}, mask={mask_applied}")
         if done or truncated:
             break
 
