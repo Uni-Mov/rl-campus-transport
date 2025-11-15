@@ -183,11 +183,17 @@ class ActionMaskingWrapper(gym.Wrapper):
         self.recent_nodes_set = set(self.recent_nodes)
 
     def _calculate_cycle_penalty(self):
-        cycle_penalty = 0.0
+        # Devuelve el penalty "crudo" (un valor negativo) en unidades absolutas.
         visit_count = self.visit_counter[self.env.current_node]
         if visit_count > 3:
-            cycle_penalty -= 20 * (visit_count - 3)
-        return max(cycle_penalty, -300)
+            base = getattr(self.env, "anti_loop_penalty", 20.0)
+            raw = -float(base) * (visit_count - 3)
+        else:
+            raw = 0.0
+        # limitar el raw penalty a un mínimo (consistente con comportamiento previo)
+        if raw < -300.0:
+            raw = -300.0
+        return raw
 
     def _initialize_cycle_tracking(self):
         self.recent_nodes = deque([self.env.current_node], maxlen=10)
@@ -200,15 +206,40 @@ class ActionMaskingWrapper(gym.Wrapper):
         orig_action = int(action)
         if action >= self.env.max_actions or not self.action_mask[action]:
             action = self._get_valid_action_fallback()
+        # soportar env.step que devuelva 4-tupla (gym) o 5-tupla (gymnasium)
+        result = self.env.step(action)
+        if len(result) == 4:
+            obs, reward, done, info = result
+            truncated = False
+        else:
+            obs, reward, done, truncated, info = result
 
-        obs, reward, done, truncated, info = self.env.step(action)
         self._update_cycle_tracking()
 
-        cycle_penalty = self._calculate_cycle_penalty()
-        reward += cycle_penalty
+        # obtener penalty "crudo" y escalarlo a la misma unidad que el reward normalizado del env
+        raw_cycle_penalty = self._calculate_cycle_penalty()
+        norm = getattr(self.env, "max_reward_value", None)
+        try:
+            norm = float(norm) if norm is not None else 1.0
+        except Exception:
+            norm = 1.0
+        if norm <= 0:
+            norm = 1.0
+        cycle_penalty = float(raw_cycle_penalty) / norm
+        try:
+            reward = float(reward) + cycle_penalty
+        except Exception:
+            # si reward no es un escalar simple, intentar convertir
+            try:
+                reward = float(np.asarray(reward).item()) + cycle_penalty
+            except Exception:
+                # fallback: dejar reward sin cambiar si no convertible
+                pass
 
-        if cycle_penalty <= -300:
+        # truncar si el raw penalty excede el umbral severo (comportamiento previo)
+        if raw_cycle_penalty <= -300.0:
             truncated = True
+            info = dict(info or {})
             info["terminated_reason"] = "loop_detected"
 
         info = dict(info or {})
@@ -218,10 +249,19 @@ class ActionMaskingWrapper(gym.Wrapper):
         info["chosen_action"] = int(action)
         info["valid_actions"] = np.where(self.action_mask)[0].tolist()
 
+        # devolver en la misma forma que recibió del env interno
+        if len(result) == 4 and truncated is False:
+            return obs, reward, done, info
         return obs, reward, done, truncated, info
 
     def reset(self, **kwargs):
-        obs, info = self.env.reset(**kwargs)
+        # aceptar env.reset() -> obs  o env.reset() -> (obs, info)
+        res = self.env.reset(**kwargs)
+        if isinstance(res, tuple) and len(res) == 2:
+            obs, info = res
+        else:
+            obs = res
+            info = {}
         self._initialize_cycle_tracking()
         self._update_action_mask_with_cycles()
         return obs, info
