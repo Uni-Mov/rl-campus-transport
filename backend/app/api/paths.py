@@ -27,13 +27,7 @@ def get_path():
     except ValueError:
         return jsonify({"error": "Parameters must be valid numbers (integers or decimals)."}) , 400
 
-    # 2. Llamar al modelo de IA real
-    # TODO: Descomentar y ajustar esta línea cuando la función de IA esté disponible.
-    # route_data = find_ai_route(
-    #     start_node_coord=start_node, # Nombres de parámetro sugeridos
-    #     waypoints_coords=waypoints,
-    #     end_node_coord=end_node
-    # )
+    route_data = find_ai_route(start_node,waypoints,end_node)
 
     # --- INICIO: Bloque de código temporal para evitar errores ---
     route_data = {

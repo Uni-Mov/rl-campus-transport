@@ -42,6 +42,8 @@ evaluation:
   deterministic: true
   best_model_save_path: "./logs/best_model_masked/"
   log_path: "./logs/results_masked/"
+  train_log_dir: "./logs/training/"  # directorio donde se guarda monitor.csv con recompensas de entrenamiento
+  tensorboard_log: "./logs/tensorboard/"  # directorio donde TensorBoard guarda métricas de convergencia (losses, entropy, etc.)
   early_stop:
     max_no_improvement_evals: 8
     min_evals: 3
