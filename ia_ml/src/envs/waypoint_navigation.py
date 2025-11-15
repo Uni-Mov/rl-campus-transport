@@ -96,7 +96,7 @@ class WaypointNavigationEnv(gym.Env):
     # parametros de recompensa
     def _init_reward_params(self, rew_cfg: Dict[str, Any]):
         self.weight_name = rew_cfg.get("weight_name", "travel_time")
-        self.anti_loop_penalty = rew_cfg.get("anti_loop_penalty", 20.0)
+        self.anti_loop_penalty = 0.0
         self.move_cost_coef = rew_cfg.get("move_cost_coef", 0.01)
         self.progress_coef = rew_cfg.get("progress_coef", 5.0)
         self.waypoint_bonus = rew_cfg.get("waypoint_bonus", 50.0)
@@ -198,9 +198,7 @@ class WaypointNavigationEnv(gym.Env):
         if self.current_node == self.destination:
             reward += self.destination_bonus / norm_factor
 
-        # penalizaciones
-        if self.path_history.count(self.current_node) > 2:
-            reward -= self.anti_loop_penalty / norm_factor
+        # penalización por no progresar
         if progress <= 0:
             reward -= self.no_progress_penalty / norm_factor
 
