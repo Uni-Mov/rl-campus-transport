@@ -18,7 +18,7 @@ from stable_baselines3.common.callbacks import (
 )
 from stable_baselines3.common.monitor import Monitor
 from src.envs import create_masked_waypoint_env 
-from src.envs.reward_normalizer import RewardNormalizer
+from src.envs.reward_normalizer import VC2Normalizer
 from src.data.download_graph import (
     get_graph_relabel,
     load_graph_from_graphml,
@@ -34,7 +34,7 @@ def make_env(graph, start_node, waypoints, destination, environment_cfg: Dict, r
     gamma = get_float(rewards_cfg, "norm_gamma", 0.99)
     clip = get_float(rewards_cfg, "norm_clip", 10.0)
     scale = get_float(rewards_cfg, "norm_scale", 1.0)
-    return RewardNormalizer(base, gamma=gamma, clip_range=clip, scale=scale)
+    return VC2Normalizer(base, gamma=gamma, clip_range=clip, scale=scale)
 
 
 def get_config_path() -> Path:
@@ -249,6 +249,41 @@ class DebugCallback(BaseCallback):
         return True
 
 
+class PushValueStatsCallback(BaseCallback):
+    """Callback que empuja las predicciones del crítico (values) al normalizador VC2.
+
+    Debe inicializarse con la instancia del normalizador que envuelve el env base
+    (es decir, la que devuelve `make_env`). En `on_rollout_end` accede al
+    `rollout_buffer` del modelo y extrae los `values` para actualizar
+    `rms_value` vía `push_value_batch`.
+    """
+    def __init__(self, normalizer, verbose: int = 0):
+        super().__init__(verbose)
+        self.normalizer = normalizer
+
+    def _on_rollout_end(self) -> None:
+        # SB3 almacena los valores predichos en rollout_buffer.values (torch tensor)
+        try:
+            buf = getattr(self.model, "rollout_buffer", None)
+            if buf is None:
+                return
+            values = None
+            # rollout_buffer may store 'values' or 'values_preds'
+            if hasattr(buf, "values"):
+                # Torch tensor
+                values = buf.values
+            elif hasattr(buf, "value_preds"):
+                values = buf.value_preds
+            if values is None:
+                return
+            # convert to numpy and push
+            vals_np = values.cpu().numpy().ravel()
+            self.normalizer.push_value_batch(vals_np)
+        except Exception as e:
+            if self.verbose:
+                print(f"PushValueStatsCallback error: {e}")
+
+
 def build_callbacks(eval_env, eval_cfg: Dict[str, Any], debug_freq: int = 1000) -> Tuple[EvalCallback, DebugCallback]:
     early_cfg = eval_cfg.get("early_stop", {})
     stop_callback = StopTrainingOnNoModelImprovement(
@@ -363,7 +398,9 @@ def main() -> None:
     total_timesteps = get_int(ppo_cfg, "total_timesteps", 250_000)
     # callbacks
     eval_callback, debug_callback = build_callbacks(eval_env, eval_cfg, debug_freq=1000)
-    callback_list = CallbackList([eval_callback, debug_callback])
+    # PushValueStatsCallback needs the original normalizer instance (base_env)
+    push_value_callback = PushValueStatsCallback(normalizer=base_env, verbose=0)
+    callback_list = CallbackList([eval_callback, debug_callback, push_value_callback])
     model.learn(total_timesteps=total_timesteps, callback=callback_list, progress_bar=True)
     model.save("ppo_waypoint_masked")
 
