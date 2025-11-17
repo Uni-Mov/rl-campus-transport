@@ -76,10 +76,6 @@ class WaypointNavigationEnv(gym.Env):
         # calcular distancia máxima para normalización
         # usar distancia euclidiana máxima como aproximación
         self.max_distance = self._calculate_max_distance()
-        
-        # calcular valor máximo para normalización de rewards (depende de weight_name)
-        # se inicializará después de conocer weight_name en _init_reward_params
-        self.max_reward_value = None
 
     # espacios de accion y observacion
     def _init_spaces(self):
@@ -96,16 +92,12 @@ class WaypointNavigationEnv(gym.Env):
     # parametros de recompensa
     def _init_reward_params(self, rew_cfg: Dict[str, Any]):
         self.weight_name = rew_cfg.get("weight_name", "travel_time")
-        self.anti_loop_penalty = 0.0
+        self.anti_loop_penalty = rew_cfg.get("anti_loop_penalty", 20.0)
         self.move_cost_coef = rew_cfg.get("move_cost_coef", 0.01)
         self.progress_coef = rew_cfg.get("progress_coef", 5.0)
         self.waypoint_bonus = rew_cfg.get("waypoint_bonus", 50.0)
         self.destination_bonus = rew_cfg.get("destination_bonus", 200.0)
         self.no_progress_penalty = rew_cfg.get("no_progress_penalty", 2.0)
-        
-        # calcular valor máximo para normalización de rewards
-        # si weight_name es "travel_time", usar tiempo máximo; si es "length" o distancia, usar max_distance
-        self.max_reward_value = self._calculate_max_reward_value()
 
     # variables de estado
     def _reset_state_vars(self):
@@ -176,31 +168,23 @@ class WaypointNavigationEnv(gym.Env):
         return dist_prev - dist_curr
 
     def _compute_reward(self, travel_time: float, progress: float) -> float:
-        # normalizar travel_time y progress usando max_reward_value
-        # max_reward_value está en las mismas unidades que travel_time y progress
-        norm_factor = self.max_reward_value if self.max_reward_value and self.max_reward_value > 0 else 1.0
-        
-        travel_time_norm = travel_time / norm_factor
-        progress_norm = progress / norm_factor
-        
         reward = 0.0
-        reward -= self.move_cost_coef * travel_time_norm
-        reward += self.progress_coef * progress_norm
+        reward -= self.move_cost_coef * travel_time
+        reward += self.progress_coef * progress
 
-        # normalizar bonuses y penalizaciones usando norm_factor para mantener escala consistente
         # waypoint alcanzado
         if self.current_node in self.remaining_waypoints:
             self.remaining_waypoints.remove(self.current_node)
             self.visited_waypoints.add(self.current_node)
-            reward += self.waypoint_bonus / norm_factor
+            reward += self.waypoint_bonus
 
         # destino alcanzado
         if self.current_node == self.destination:
-            reward += self.destination_bonus / norm_factor
+            reward += self.destination_bonus
 
         # penalización por no progresar
         if progress <= 0:
-            reward -= self.no_progress_penalty / norm_factor
+            reward -= self.no_progress_penalty
 
         return reward
 
@@ -234,14 +218,6 @@ class WaypointNavigationEnv(gym.Env):
     # funciones auxiliares para el grafo
     def _neighbors(self, node: Optional[int]) -> List[int]:
         return list(self.graph.neighbors(node)) if node in self.graph else []
-    
-    #Getter de la mascara de acciones válidas, ahora es dinamica
-    def _get_action_mask(self) -> np.ndarray:
-        mask = np.zeros(self.max_actions, dtype=bool)
-        neighbors = self._neighbors(self.current_node)
-        valid_indices = range(len(neighbors))
-        mask[list(valid_indices)] = True
-        return mask
 
     def _sp_length(self, a: int, b: int) -> float:
         """Calculates the path using the configured algorithm."""
@@ -317,54 +293,6 @@ class WaypointNavigationEnv(gym.Env):
                 max_dist = max(max_dist, dist)
         
         return max_dist if max_dist > 0 else 1.0
-    
-    def _calculate_max_reward_value(self) -> float:
-        """Calcula el valor máximo para normalizar rewards.
-        
-        Si weight_name es "travel_time", calcula tiempo máximo del grafo.
-        Si es "length" o distancia, usa max_distance.
-        """
-        # si weight_name es distancia/length, usar max_distance
-        if self.weight_name in ("length", "distance"):
-            return self.max_distance
-        
-        # si es travel_time, calcular tiempo máximo del grafo
-        if self.weight_name == "travel_time":
-            # intentar obtener de la matriz de distancias si existe
-            if self.distance_matrix is not None:
-                try:
-                    max_val = 0.0
-                    for source_dict in self.distance_matrix.values():
-                        if isinstance(source_dict, dict):
-                            for val in source_dict.values():
-                                if isinstance(val, (int, float)) and val != np.inf:
-                                    max_val = max(max_val, float(val))
-                    if max_val > 0:
-                        return max_val
-                except Exception:
-                    pass
-            
-            # calcular tiempo máximo desde los edges del grafo
-            max_time = 0.0
-            for u, v, key, attrs in self.graph.edges(keys=True, data=True):
-                travel_time = attrs.get("travel_time")
-                if travel_time is not None:
-                    try:
-                        max_time = max(max_time, float(travel_time))
-                    except (ValueError, TypeError):
-                        pass
-            
-            # si no hay travel_time en edges, estimar desde length y velocidad
-            if max_time == 0.0:
-                # estimar tiempo máximo usando distancia máxima y velocidad mínima razonable
-                # velocidad mínima: 5 km/h = 1.39 m/s (peatonal)
-                min_speed_ms = 1.39
-                max_time = self.max_distance / min_speed_ms if min_speed_ms > 0 else self.max_distance
-            
-            return max_time if max_time > 0 else self.max_distance
-        
-        # default: usar max_distance
-        return self.max_distance
         
     # devuelve un diccionario con la información de la arista entre dos nodos
     def _edge_data(self, u: int, v: int) -> Dict[str, Any]:

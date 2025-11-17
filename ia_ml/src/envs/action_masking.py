@@ -226,16 +226,8 @@ class ActionMaskingWrapper(gym.Wrapper):
 
         self._update_cycle_tracking()
 
-        # obtener penalty "crudo" y escalarlo a la misma unidad que el reward normalizado del env
-        raw_cycle_penalty = self._calculate_cycle_penalty()
-        norm = getattr(self.env, "max_reward_value", None)
-        try:
-            norm = float(norm) if norm is not None else 1.0
-        except Exception:
-            norm = 1.0
-        if norm <= 0:
-            norm = 1.0
-        cycle_penalty = float(raw_cycle_penalty) / norm
+        # Usar valor raw para que VC2Normalizer pueda aplicar su normalización adaptativa
+        cycle_penalty = float(self._calculate_cycle_penalty())
         try:
             reward = float(reward) + cycle_penalty
         except Exception:
