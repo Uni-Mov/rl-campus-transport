@@ -125,10 +125,26 @@ def load_graph_from_cfg(cfg: Dict[str, Any]) -> nx.MultiDiGraph:
 def build_navigation_params(graph: nx.MultiDiGraph) -> Tuple[int, int, list[int], int]:
     n_nodes = graph.number_of_nodes()
     print(f"Grafo obtenido con {n_nodes} nodos")
-    waypoints = [20, 35, int(n_nodes * 0.3), int(n_nodes * 0.7)]
+    
+    # Waypoints escalados según tamaño del grafo
+    if n_nodes < 100:
+        waypoints = [20, 35, int(n_nodes * 0.3), int(n_nodes * 0.7)]
+    elif n_nodes < 1000:
+        waypoints = [int(n_nodes * 0.1), int(n_nodes * 0.3), int(n_nodes * 0.6), int(n_nodes * 0.8)]
+    else:
+        # Para grafos muy grandes, usar menos waypoints pero más estratégicos
+        waypoints = [int(n_nodes * 0.2), int(n_nodes * 0.5), int(n_nodes * 0.8)]
+    
     destination = n_nodes - 1
     start_node = 0
-    max_steps = int(n_nodes * 0.8)
+    
+    # max_steps escalado logarítmicamente para grafos grandes
+    base_steps = min(int(n_nodes * 0.5), 1000)  # limitar para eficiencia
+    max_steps = base_steps
+    
+    print(f"Waypoints: {waypoints}")
+    print(f"Max steps: {max_steps}")
+    
     return start_node, destination, waypoints, max_steps
 
 
@@ -143,12 +159,14 @@ def build_model(env, ppo_cfg: Dict[str, Any], policy_kwargs: Dict[str, Any], dev
         policy,
         env,
         learning_rate=get_float(ppo_cfg, "learning_rate", 3e-4),
-        n_steps=get_int(ppo_cfg, "n_steps", 1024),
-        batch_size=get_int(ppo_cfg, "batch_size", 256),
+        n_steps=get_int(ppo_cfg, "n_steps", 2048),
+        batch_size=get_int(ppo_cfg, "batch_size", 512),
+        n_epochs=get_int(ppo_cfg, "n_epochs", 10),
         gamma=get_float(ppo_cfg, "gamma", 0.99),
         clip_range=get_float(ppo_cfg, "clip_range", 0.2),
         ent_coef=get_float(ppo_cfg, "ent_coef", 0.01),
         vf_coef=get_float(ppo_cfg, "vf_coef", 0.5),
+        max_grad_norm=get_float(ppo_cfg, "max_grad_norm", 0.5),
         policy_kwargs=policy_kwargs,
         verbose=get_int(ppo_cfg, "verbose", 1),
         device=device,
@@ -260,6 +278,10 @@ class PushValueStatsCallback(BaseCallback):
     def __init__(self, normalizer, verbose: int = 0):
         super().__init__(verbose)
         self.normalizer = normalizer
+
+    def _on_step(self) -> bool:
+        """Método obligatorio de BaseCallback. Retorna True para continuar entrenamiento."""
+        return True
 
     def _on_rollout_end(self) -> None:
         # SB3 almacena los valores predichos en rollout_buffer.values (torch tensor)

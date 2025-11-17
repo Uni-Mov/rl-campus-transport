@@ -13,6 +13,10 @@ rewards:
   waypoint_bonus: 50.0
   destination_bonus: 200.0
   no_progress_penalty: 2.0
+  # Parámetros de normalización VC2
+  norm_gamma: 0.99
+  norm_clip: 10.0
+  norm_scale: 1.0
 
 
 graph:
@@ -21,23 +25,25 @@ graph:
   path: "scripts/subgraph.graphml"               # ruta a .graphml si source == "file"
   distances_path: "data/subgraph_distances.pkl"      # ruta a .pkl opcional con distancias precomputadas
 
-# hiperparámetros de PPO y entrenamiento
+# hiperparámetros de PPO y entrenamiento (optimizado para grafos grandes)
 ppo:
   policy: "MlpPolicy"
   device: "cuda"  # "auto" | "cuda" | "cpu"
   learning_rate: 3e-4
-  n_steps: 1024
-  batch_size: 256
+  n_steps: 2048
+  batch_size: 512
   gamma: 0.99
   clip_range: 0.2
   ent_coef: 0.01
   vf_coef: 0.5
-  net_arch: [256, 128, 64]
-  total_timesteps: 250000
+  net_arch: [512, 256, 128]
+  total_timesteps: 500000
   verbose: 1
+  n_epochs: 10 
+  max_grad_norm: 0.5  
 
 evaluation:
-  eval_freq: 5000
+  eval_freq: 10000  
   n_eval_episodes: 5
   deterministic: true
   best_model_save_path: "./logs/best_model_masked/"
@@ -45,6 +51,6 @@ evaluation:
   train_log_dir: "./logs/training/"  # directorio donde se guarda monitor.csv con recompensas de entrenamiento
   tensorboard_log: "./logs/tensorboard/"  # directorio donde TensorBoard guarda métricas de convergencia (losses, entropy, etc.)
   early_stop:
-    max_no_improvement_evals: 8
-    min_evals: 3
+    max_no_improvement_evals: 10 
+    min_evals: 5 
     verbose: 1
