@@ -2,32 +2,57 @@
 
 from flask import Blueprint, jsonify, request
 
-from ia_ml.src.api.main import find_ai_route
+# commenting this line until the RL engine is ready
+# from ia_ml.src.api.main import find_ai_route
 
 paths_bp = Blueprint("paths", __name__)
 
-@paths_bp.route("/calculate", methods=["GET"])
+@paths_bp.route("/calculate", methods=["POST"])
 def get_path():
     """
     Endpoint for calculating the optimal route between two points and waypoints.
-    Receives the start and end nodes and waypoints as URL parameters.
+    Expects JSON body with keys:
+      - start_node: [lng, lat]
+      - end_node: [lng, lat]
+      - waypoints: optional list of [lng, lat]
     """
 
-    start_node_srt = request.args.get("start_node")
-    end_node_srt = request.args.get("end_node")
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({"error": "JSON body is required"}), 400
 
-    if not start_node_srt or not end_node_srt:
-        return jsonify({"error": "The 'start_node' and 'end_node' parameters are required"}), 400
+    start_node = data.get("start_node")
+    end_node = data.get("end_node")
+    waypoints = data.get("waypoints", [])
+
+    if start_node is None or end_node is None:
+        return jsonify({"error": "The 'start_node' and 'end_node' fields are required in JSON body"}), 400
 
     try:
-        start_node = float(start_node_srt)
-        end_node = float(end_node_srt)
-        waypoints_srt = request.args.get("waypoints", "")
-        waypoints = [float(wp) for wp in waypoints_srt.split(",")]
-    except ValueError:
-        return jsonify({"error": "Parameters must be valid numbers (integers or decimals)."}) , 400
+        # validate start and end as coordinate pairs
+        if not (isinstance(start_node, (list, tuple)) and len(start_node) >= 2):
+            raise ValueError("start_node must be a [lng, lat] pair")
+        if not (isinstance(end_node, (list, tuple)) and len(end_node) >= 2):
+            raise ValueError("end_node must be a [lng, lat] pair")
 
-    route_data = find_ai_route(start_node,waypoints,end_node)
+        start_node = [float(start_node[0]), float(start_node[1])]
+        end_node = [float(end_node[0]), float(end_node[1])]
+
+        parsed_waypoints = []
+        if isinstance(waypoints, (list, tuple)):
+            for wp in waypoints:
+                if not (isinstance(wp, (list, tuple)) and len(wp) >= 2):
+                    raise ValueError("each waypoint must be a [lng, lat] pair")
+                parsed_waypoints.append([float(wp[0]), float(wp[1])])
+        else:
+            raise ValueError("waypoints must be an array of [lng, lat] pairs")
+
+        waypoints = parsed_waypoints
+    except (ValueError, TypeError) as e:
+        return jsonify({"error": str(e)}), 400
+
+    # commenting this line until the RL engine is ready
+    # route_data = find_ai_route(start_node, waypoints, end_node)
 
     # --- INICIO: Bloque de código temporal para evitar errores ---
     route_data = {
