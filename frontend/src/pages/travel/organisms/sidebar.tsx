@@ -7,32 +7,32 @@ import { Settings } from "lucide-react";
 import { LogOut } from "lucide-react";
 import { Menu } from "lucide-react";
 import { X } from "lucide-react";
+import { Info } from "lucide-react"
 
 import { useAuth } from "@/context/auth-context";
-// import type { User as UserModel } from "@/models/user" 
+import { useRouter } from "@/context/router-context";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 
 export default function Sidebar() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const { useCustomRouter, setUseCustomRouter } = useRouter();
   const { logout, getUserFromToken } = useAuth();
-  /* 
-  const [user, setUser] = useState<UserModel|null>(null);
   
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const userData = await getUserFromToken();
-        setUser(userData);
+        await getUserFromToken();
+        
       } catch (err) {
-        throw new Error();
+        console.error("Error fetching user:", err);
       }
     };
     
     fetchUser();
   }, []);
-  */
+  
 
   const sidebarContent = (
     <>
@@ -64,6 +64,7 @@ export default function Sidebar() {
           <div className="flex-1 min-w-0">
             {/* <p className="font-medium truncate">{user?.first_name}</p> */}
             <p className="font-medium truncate">User Name</p>
+            <p className="font-light text-xs truncate">Driver</p>
           </div>
         </div>
       </div>
@@ -88,6 +89,35 @@ export default function Sidebar() {
     
       {/* Logout - Fixed at bottom */}
       <div className="flex-shrink-0">
+        <div className="p-4 border-t border-border">
+          {/* Custom Router Toggle */}
+          <div className="flex items-center justify-between gap-3 p-3 rounded-lg hover:bg-muted transition-colors">
+            <div className="flex items-center gap-2 flex-1">
+              <div className="relative inline-block group/tooltip">
+                <Info />
+                {/* Tooltip */}
+                <div className="absolute bottom-full left-0 mb-2 w-56 p-3 bg-slate-900 text-white text-xs rounded opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-opacity duration-200 pointer-events-none z-50">
+                  El motor de rutas personalizado es un modelo de Reinforcement Learning construido por los creadores de este proyecto
+                  <div className="absolute top-full left-3 border-4 border-transparent border-t-slate-900"></div>
+                </div>
+              </div>
+              <span>Usar motor de rutas personalizado</span>
+            </div>
+            {/* Toggle Switch */}
+            <button
+              onClick={() => setUseCustomRouter(!useCustomRouter)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 ${
+                useCustomRouter ? 'bg-emerald-600' : 'bg-gray-300'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  useCustomRouter ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+        </div>
         <div className="p-4 border-t border-border">
           <Link to="/">
             <button
