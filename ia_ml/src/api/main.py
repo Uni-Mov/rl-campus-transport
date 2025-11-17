@@ -11,16 +11,21 @@ if str(repo_root) not in sys.path:
     sys.path.insert(0, str(repo_root))
 
 from ia_ml.src.training.run_inference import run_episode
-from ia_ml.src.data.download_graph import get_graph_relabel
+from ia_ml.src.data.download_graph import get_graph_relabel, load_subgraph_from_file
 
 
 def find_ai_route(
-    start_node_coord: float,
-    waypoints_coords: List[float],
-    end_node_coord: float
+    start_node_coord: List[float],
+    waypoints_coords: List[List[float]],
+    end_node_coord: List[float]
 ) -> Optional[Dict]:
     """
     Calcula una ruta óptima usando el modelo PPO entrenado.
+    
+    Args:
+        start_node_coord: [lon, lat] del nodo inicial
+        waypoints_coords: lista de [lon, lat] para cada waypoint
+        end_node_coord: [lon, lat] del nodo destino
 
     Devuelve un diccionario con:
     {
@@ -32,9 +37,14 @@ def find_ai_route(
     """
 
     try:
-        # Cargar el grafo del mapa
-        place = "Guatimozin, Cordoba, Argentina"  
-        graph, node_to_idx, idx_to_node = get_graph_relabel(place)
+        # Cargar el subgrafo usado para entrenar el modelo
+        ia_ml_root = Path(__file__).resolve().parent.parent.parent  # De ia_ml/src/api a ia_ml
+        subgraph_path = ia_ml_root / "scripts" / "subgraph.graphml"
+        
+        if not subgraph_path.exists():
+            raise FileNotFoundError(f"Subgrafo no encontrado en {subgraph_path}")
+        
+        graph, node_to_idx, idx_to_node = load_subgraph_from_file(str(subgraph_path))
 
         # Obtener los nodos más cercanos a las coordenadas
         def get_nearest_node(coord):
@@ -48,13 +58,19 @@ def find_ai_route(
         waypoints = [get_nearest_node(wp) for wp in waypoints_coords]
         end_node = get_nearest_node(end_node_coord)
 
-        # Ruta al modelo entrenado
-        model_path = os.path.join(Path(__file__).resolve().parents[1], "ppo_waypoint_masked.zip")
+        # Ruta al modelo entrenado (buscar desde ia_ml/src/api subiendo a ia_ml y luego logs)
+        ia_ml_root = Path(__file__).resolve().parent.parent.parent  # De ia_ml/src/api a ia_ml
+        model_path = ia_ml_root / "logs" / "best_model_masked" / "best_model.zip"
+        
+        if not model_path.exists():
+            raise FileNotFoundError(f"Modelo no encontrado en {model_path}")
 
         # Ejecutar un episodio con el modelo PPO
         result = run_episode(
-            place=place,
-            model_path=model_path,
+            graph=graph,
+            node_to_idx=node_to_idx,
+            idx_to_node=idx_to_node,
+            model_path=str(model_path),
             start=start_node,
             waypoints=waypoints,
             destination=end_node,
