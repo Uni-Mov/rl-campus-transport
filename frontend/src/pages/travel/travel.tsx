@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/context/auth-context";
+import { useRouter } from "@/context/router-context";
 import { PointSelectionMode } from "./selection/PointSelectionMode";
 import { TravelWithRoute } from "./route/components/TravelWithRoute";
 import { defineRoute } from "./route/services/defineRoute";
@@ -24,13 +25,14 @@ export default function Travel() {
   const [isLoading] = useState(false);
   const [mode, setMode] = useState<TravelMode>('selection');
   const navigate = useNavigate();
+  const { useCustomRouter } = useRouter();
 
   // manejadores de eventos para la coordinación entre los modos
   const handlePointsSelected = async (selectedPoints: Coordinate[]) => {
     // completa los waypoints agregando la universidad como destino
     const waypointsWithUniversity = [...selectedPoints, UNIVERSITY_COORDINATES];
-    // calcula la ruta usando el util compartido
-    const route = await defineRoute(waypointsWithUniversity);
+    // calcula la ruta usando el util compartido (con opción de usar el motor personalizado)
+    const route = await defineRoute(waypointsWithUniversity, useCustomRouter);
     setRouteCoordinates(route);
     setWaypoints(waypointsWithUniversity);
     setMode('route');
