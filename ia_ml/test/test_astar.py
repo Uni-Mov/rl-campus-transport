@@ -31,9 +31,8 @@ def main():
         print(f"Paso {step_count}")
 
         neighbors = env._neighbors(env.current_node)
-        mask = env._get_action_mask()
         print("\nVecinos disponibles:", neighbors)
-        print("Máscara de acciones:", mask)
+        print("Número de vecinos:", len(neighbors))
 
         action = 0
         obs, reward, done, truncated, info = env.step(action)

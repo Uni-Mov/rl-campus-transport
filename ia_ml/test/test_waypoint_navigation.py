@@ -32,8 +32,8 @@ def test_action_mask(city_graph):
         rew_cfg={}
     )
     env.reset()
-    mask = env._get_action_mask()
-    assert mask.sum() > 0 
+    neighbors = env._neighbors(env.current_node)
+    assert len(neighbors) > 0 
 
 def test_reward_calculation(city_graph):
     env = WaypointNavigationEnv(
