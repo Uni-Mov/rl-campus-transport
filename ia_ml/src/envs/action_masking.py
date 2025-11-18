@@ -238,8 +238,8 @@ class ActionMaskingWrapper(gym.Wrapper):
                 # fallback: dejar reward sin cambiar si no convertible
                 pass
 
-        # truncar si el raw penalty excede el umbral severo (comportamiento previo)
-        if raw_cycle_penalty <= -300.0:
+        # truncar si el penalty excede el umbral severo
+        if cycle_penalty <= -300.0:
             truncated = True
             info = dict(info or {})
             info["terminated_reason"] = "loop_detected"
