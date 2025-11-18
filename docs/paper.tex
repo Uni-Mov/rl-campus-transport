@@ -111,10 +111,35 @@ Esta medida es útil porque en zonas de transición la elección del camino tien
 El embedding final de cada nodo $v_i$ se construye concatenando todos estos atributos normalizados:
 
 \[
-E(v_i) = [x_i, y_i, \texttt{in\_degree}, \texttt{out\_degree}, \texttt{neighbor\_count}, \texttt{avg\_neighbor\_degree}, \texttt{max\_neighbor\_degree}, \texttt{min\_neighbor\_degree}, \texttt{neighbor\_degree\_std}, \texttt{degree\_centrality}, \texttt{betweenness\_approx}]
+\begin{aligned}
+E(v_i) = [&x_i, y_i, \texttt{in\_degree}, \texttt{out\_degree}, \texttt{neighbor\_count},\\
+          &\texttt{avg\_neighbor\_degree}, \texttt{max\_neighbor\_degree}, \texttt{min\_neighbor\_degree},\\
+          &\texttt{neighbor\_degree\_std}, \texttt{degree\_centrality}, \texttt{betweenness\_approx}]
+\end{aligned}
 \]
 
-Esta representación multidimensional permite al agente de RL aprender no solo a moverse, sino a razonar sobre la estructura de la ciudad, diferenciando zonas densas, periféricas y de transición.
+\subsubsection{Extensión para grafos urbanos reales}
+
+En entornos urbanos derivados de datos reales de \textit{OpenStreetMap} (OSM), los nodos y aristas contienen información adicional que describe características físicas del entorno vial. Para aprovechar esta información, el embedding estructural definido previamente puede ampliarse incorporando atributos semánticos obtenidos directamente de las aristas conectadas al nodo.
+
+Entre las propiedades más relevantes se encuentran:
+\begin{itemize}
+  \item \textbf{Límite de velocidad (\textit{maxspeed})}: indica la velocidad máxima permitida sobre el tramo. Su valor se normaliza dividiéndolo por un máximo global (por ejemplo, $120\,km/h$), generando una variable continua entre 0 y 1.
+  \item \textbf{Tipo de superficie (\textit{surface})}: codifica el material de la vía (por ejemplo, \texttt{asphalt}, \texttt{gravel}, \texttt{unpaved}). Se transforma en una puntuación normalizada según la calidad o transitabilidad estimada de cada superficie.
+  \item \textbf{Categoría vial (\textit{highway})}: clasifica el tipo de calle o ruta (\texttt{residential}, \texttt{primary}, \texttt{motorway}, etc.). Se asigna un código numérico o vector \textit{one-hot} que preserva las relaciones jerárquicas entre tipos de vía.
+  \item \textbf{Número de carriles (\textit{lanes})}: representa la capacidad del segmento vial. Se normaliza por un máximo razonable (por ejemplo, 6 carriles) para mantener la escala uniforme con el resto del embedding.
+  \item \textbf{Longitud y tiempo de viaje (\textit{length}, \textit{travel\_time})}: miden el costo físico asociado al movimiento entre nodos. Estos valores pueden utilizarse tanto como variables de entrenamiento como en la función de recompensa del entorno.
+\end{itemize}
+
+El embedding extendido de un nodo $v_i$ se obtiene concatenando el vector estructural original con las componentes semánticas normalizadas, generando una representación híbrida:
+
+\[
+E'(v_i) = [E(v_i) \, \| \, \texttt{maxspeed\_norm}, \texttt{surface\_score}, \texttt{highway\_code}, \texttt{lanes\_norm}]
+\]
+
+Esta combinación dota al agente de una percepción más rica del entorno urbano: puede distinguir no sólo la forma del grafo, sino también las condiciones viales de cada sector. En consecuencia, el aprendizaje por refuerzo puede capturar estrategias de navegación más realistas, priorizando vías rápidas, seguras o de menor costo energético según el objetivo de la política.
+
+
 
 \section{Wrapper de enmascaramiento de acciones}
 
@@ -125,13 +150,81 @@ El entorno se complementa con un \texttt{ActionMaskingWrapper}, encargado de fil
     \item \textbf{Selección de respaldo:} si todas las acciones son inválidas, el wrapper elige una acción de respaldo que mantenga la continuidad del episodio.
 \end{enumerate}
 
-\section{Aplicaciones y escalabilidad}
 
-El entorno está diseñado para escalar desde redes sintéticas hasta ciudades reales. En un grafo urbano con miles de nodos, las distancias se calculan mediante Dijkstra ponderado, aunque para entornos de gran escala se recomienda:
-\begin{itemize}
-    \item Precomputar distancias entre puntos relevantes y almacenarlas en caché.
-    \item Usar heurísticas A* para aproximar distancias.
+\section{Limitaciones y decisiones tomadas}
+
+A lo largo del desarrollo se realizaron múltiples intentos para conservar el espíritu del primer modelo funcional, aquel que operaba correctamente sobre grafos relativamente acotados (entre 400 y 500 nodos). Se experimentó con subgrafos de ciudades, pueblos y distintas estructuras urbanas con el objetivo de mantener un esquema de aprendizaje lo más cercano posible al \textit{reinforcement learning} puro. Sin embargo, conforme la escala del grafo aumentaba, también lo hacía la complejidad combinatoria del entorno y la frecuencia con la que el agente caía en bucles, rutas irrelevantes o regiones del espacio de estados en las que era prácticamente imposible recuperar una trayectoria útil.
+
+Una analogía permite comprender mejor este cambio. En el diseño original, el agente era como un explorador que recorre una ciudad desconocida aprendiendo únicamente de la experiencia: se pierde, experimenta, prueba caminos, comete errores y, a través del refuerzo, descubre patrones que lo acercan a los objetivos. Este enfoque funciona mientras la ciudad sea relativamente pequeña. A medida que la estructura crece y aparecen múltiples ramificaciones, callejones sin salida, loops naturales del entramado urbano y caminos indistinguibles desde la perspectiva local, el explorador pasa la mayor parte del tiempo vagando sin dirección. No está aprendiendo una política útil; simplemente está sobreviviendo al azar y a la escasez de señales claras de recompensa.
+
+En ese escenario surgió la necesidad de introducir un \textit{oráculo}: una fuente de información externa capaz de descartar acciones que, desde un punto de vista geométrico o topológico, no contribuían al progreso. Este oráculo incluía distancias precalculadas, heurísticas derivadas de Dijkstra, medidas de proximidad y otras \textit{features} que permiten filtrar acciones ineficientes. No le indica al agente qué hacer, pero sí limita su espacio de acción a un subconjunto razonable. Con ello, el aprendizaje se vuelve viable y la convergencia se alcanza en tiempos prácticos.
+
+Sin embargo, esta decisión tiene implicancias conceptuales. Al proporcionar un oráculo, el agente deja de ser un explorador completamente autónomo y pasa a depender de una guía que estructura el entorno antes de que la política siquiera intervenga. Desde la perspectiva teórica, esto va en contra de la esencia del \textit{reinforcement learning} tradicional, cuya premisa central es aprender únicamente a partir de la experiencia y la recompensa. El sistema resultante ya no es RL puro, sino una variante guiada por \textit{features}, donde el agente optimiza dentro de un espacio previamente moldeado para evitar comportamientos indeseados.
+
+En síntesis, la decisión de incorporar un oráculo fue necesaria para lograr un comportamiento estable en grafos urbanos extensos, pero implica una reinterpretación metodológica del enfoque: el aprendizaje pasa de ser completamente emergente a estar fuertemente asistido por conocimiento externo sobre la estructura del entorno.
+
+\subsection{El oráculo estructural como guía geométrica y semántica}
+
+El entorno incorpora un oráculo estructural cuya función es proporcionar referencias cuantitativas y representacionales que permiten estabilizar la navegación en grafos urbanos amplios. Este oráculo no decide por el agente ni reemplaza la política aprendida, pero ofrece una base geométrica, topológica y semántica desde la cual es posible evaluar desvíos, detectar progresos y mantener la coherencia de las observaciones. Su diseño se organiza en tres componentes: el cálculo de pasos óptimos, la medición de eficiencia relativa y la recuperación consistente del embedding nodal extendido $E''(v_i)$.
+
+\subsubsection{Cálculo de pasos óptimos como cota geométrica}
+
+El primer componente del oráculo establece una referencia absoluta basada en caminos mínimos. Para cada tramo del recorrido —desde el nodo inicial hasta cada waypoint y finalmente hasta el destino— se calcula la longitud del camino más corto en el grafo urbano. Esta operación produce un conjunto de cotas que representan el número mínimo de pasos que cualquier política debería emplear para completar el trayecto ideal.
+
+Estas distancias óptimas no dependen del agente, sino de la estructura del grafo. Su valor es crucial como ancla geométrica: indican cuánto “debería” costar cada segmento del recorrido y permiten evaluar desviaciones significativas, incluso en regiones donde la señal de recompensa es insuficiente para inducir correcciones espontáneas.
+
+\subsubsection{Eficiencia relativa del agente respecto del óptimo}
+
+El segundo componente permite transformar las distancias mínimas en una señal dinámica que evalúa el rendimiento del agente en tiempo real. Para cada paso, se estima el costo total que tendría completar el trayecto suponiendo que, a partir de ese punto, se siguiera el camino óptimo. Esta estimación combina dos magnitudes:
+
+\begin{enumerate}
+    \item los pasos ya ejecutados por el agente, y
+    \item la distancia restante calculada mediante caminos mínimos.
+\end{enumerate}
+
+A partir de esta comparación se definen dos métricas complementarias:  
+(a) la relación entre los pasos estimados y los óptimos, que indica el grado de desviación acumulada,  
+y (b) una eficiencia normalizada entre $0$ y $1$, donde $1$ representa un avance perfectamente alineado con la ruta ideal.
+
+Estas métricas no reemplazan la recompensa, pero nutren mecanismos auxiliares como el enmascaramiento de acciones, permitiendo descartar movimientos que comprometen la eficiencia global del episodio.
+
+El embedding estructural original $E(v_i)$ incluye atributos derivados de la forma local del grafo urbano: coordenadas normalizadas, grado de entrada y salida, número de vecinos, estadísticas del vecindario (promedio, máximo, mínimo y desviación estándar), centralidad de grado y aproximación local de intermediación. Además, incorpora atributos viales ya integrados en el embedding primario, como el tipo de superficie.
+
+\paragraph{Propiedades dinámicas derivadas de la eficiencia hacia el destino.}
+
+Para complementar la caracterización estática ofrecida por $E''(v_i)$, el entorno incorpora cuatro magnitudes continuas que describen el rendimiento del agente durante el episodio. Estas propiedades permiten capturar no solo “dónde está”, sino también “cómo está navegando” en relación con la estructura óptima del grafo.
+
+
+    \begin{itemize}
+    \item \textbf{Pasos totales estimados para completar el episodio (\textit{estimated\_total\_steps}).}  
+    Combina la distancia restante con los pasos ya realizados, produciendo una estimación del esfuerzo total necesario para finalizar el trayecto si se siguiera la ruta óptima desde ese punto.
+
+    \item \textbf{Relación entre pasos estimados y pasos óptimos (\textit{steps\_vs\_optimal\_dest}).}  
+    Compara el costo estimado del comportamiento real con la cota mínima establecida por la geometría del grafo. Valores superiores a uno indican desviaciones crecientes del rendimiento ideal.
+
+    \item \textbf{Eficiencia normalizada hacia el destino (\textit{dest\_efficiency}).}  
+    Es la inversa acotada de la relación anterior y toma valores entre cero y uno. Un valor cercano a uno representa una navegación altamente alineada con la estructura óptima; valores bajos expresan pérdidas acumuladas de eficiencia.
 \end{itemize}
+    
+ La concatenación de estos componentes produce el embedding extendido:
+
+\[
+E''(v_i)
+=
+\big[
+\,E(v_i)
+\;\|\;
+\texttt{dest\_efficiency},
+\texttt{steps\_vs\_optimal\_dest},
+\texttt{estimated\_total\_steps}
+\,\big].
+\]
+
+
+Este vector sintetiza la estructura local del grafo y las propiedades físicas de la infraestructura vial. Como resultado, cada nodo recibe una caracterización continua que preserva tanto su papel estructural como su función urbana.
+
+
+
 
 \section{Naturaleza discreta del entorno}
 
@@ -155,3 +248,4 @@ En síntesis, este trabajo traduce el concepto abstracto de moverse en un grafo 
 \end{thebibliography}
 
 \end{document}
+
