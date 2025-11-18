@@ -2,7 +2,7 @@
 
 from flask import Blueprint, jsonify, request
 
-from ia_ml.src.api.main import find_ai_route
+from ia_ml.src.api.main import find_ai_route, find_route_with_astar
 
 paths_bp = Blueprint("paths", __name__)
 
@@ -90,7 +90,15 @@ def get_path():
             return jsonify({"error": str(e)}), 400
 
     # Call AI route finder (with A* fallback)
-    route_data = find_ai_route(start_node, waypoints, end_node)
+    try:
+        route_data = find_ai_route(start_node, waypoints, end_node, use_astar_fallback=True)
+        if not route_data:
+            route_data = find_route_with_astar(start_node, waypoints, end_node)
+    except Exception as e:
+        try:
+            route_data = find_route_with_astar(start_node, waypoints, end_node)
+        except Exception:
+            return jsonify({"error": "Error calculating route"}), 500
 
     if not route_data:
         return jsonify({"error": "A route could not be found with the provided parameters."}), 500
