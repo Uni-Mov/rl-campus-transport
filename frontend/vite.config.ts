@@ -19,6 +19,15 @@ export default defineConfig({
       '@components': path.resolve(__dirname, 'src/components'),
     },
   },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://backend:5000',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+    },
+  },
   test: {
     globals: true,
     environment: "jsdom",
