@@ -1,4 +1,11 @@
 import osmnx as ox
+from pathlib import Path
+import sys
+
+IA_ML_DIR = str(Path(__file__).parent.parent.resolve()) 
+if IA_ML_DIR not in sys.path:
+    sys.path.insert(0, IA_ML_DIR)
+
 from src.envs.waypoint_navigation import WaypointNavigationEnv
 
 def main():
@@ -24,9 +31,8 @@ def main():
         print(f"Paso {step_count}")
 
         neighbors = env._neighbors(env.current_node)
-        mask = env._get_action_mask()
         print("\nVecinos disponibles:", neighbors)
-        print("Máscara de acciones:", mask)
+        print("Número de vecinos:", len(neighbors))
 
         action = 0
         obs, reward, done, truncated, info = env.step(action)

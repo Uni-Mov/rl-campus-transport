@@ -1,14 +1,56 @@
 environment:
   start_node: auto
-  max_steps: auto
+  max_steps: 600
   max_wait_steps: auto
   render_mode: "human"
+  shortest_path_algorithm: "astar"
 
 rewards:
   weight_name: "travel_time"
   anti_loop_penalty: 20.0
-  move_cost_coef: 0.01
+  move_cost_coef: 0.0008
   progress_coef: 5.0
   waypoint_bonus: 50.0
   destination_bonus: 200.0
   no_progress_penalty: 2.0
+  # Parámetros de normalización VC2
+  norm_gamma: 0.99
+  norm_clip: 10.0
+  norm_scale: 1.0
+
+
+graph:
+  source: "file"        # "place" | "file"
+  place: "Río Cuarto, Cordoba, Argentina"
+  path: "scripts/subgraph.graphml"               # ruta a .graphml si source == "file"
+  distances_path: "data/subgraph_distances.pkl"      # ruta a .pkl opcional con distancias precomputadas
+
+# hiperparámetros de PPO y entrenamiento (optimizado para grafos grandes)
+ppo:
+  policy: "MlpPolicy"
+  device: "cuda"  # "auto" | "cuda" | "cpu"
+  learning_rate: 3e-4
+  n_steps: 2048
+  batch_size: 512
+  gamma: 0.99
+  clip_range: 0.2
+  ent_coef: 0.01
+  vf_coef: 0.5
+  net_arch: [512, 256, 128]
+  total_timesteps: 100000
+  verbose: 1
+  n_epochs: 10 
+  max_grad_norm: 0.5  
+
+evaluation:
+  eval_freq: 10000  
+  n_eval_episodes: 5
+  deterministic: true
+  best_model_save_path: "./logs/best_model_masked/"
+  log_path: "./logs/results_masked/"
+  train_log_dir: "./logs/training/"  # directorio donde se guarda monitor.csv con recompensas de entrenamiento
+  tensorboard_log: "./logs/tensorboard/"  # directorio donde TensorBoard guarda métricas de convergencia (losses, entropy, etc.)
+  early_stop:
+    max_no_improvement_evals: 10 
+    min_evals: 5 
+    verbose: 1

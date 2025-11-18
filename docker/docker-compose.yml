@@ -23,8 +23,10 @@ services:
     ports:
       - "5000:5000"
     volumes:
-      - ../backend:/app
-      - /app/__pycache__
+      - ../backend:/app/backend
+      - ../ia_ml:/app/ia_ml
+      - /app/backend/__pycache__
+      - /app/ia_ml/__pycache__
     environment:
       - FLASK_ENV=development
       - FLASK_DEBUG=1

@@ -4,7 +4,7 @@ from geopy.geocoders import Nominatim
 from geopy.extra.rate_limiter import RateLimiter
 import time
 
-GRAPH_PATH = Path("ia_ml/src/data/grafo_rio_cuarto.graphml")
+GRAPH_PATH = Path("../data/grafo_rio_cuarto.graphml")
 SAMPLE_N = 20  # How many nodes to sample, or None for all
 
 def load_graph(path: Path):

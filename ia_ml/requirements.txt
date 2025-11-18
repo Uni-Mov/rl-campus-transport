@@ -5,6 +5,8 @@ gymnasium
 networkx
 osmnx
 numpy
-stable-baselines3
+stable-baselines3[extra]
 sb3-contrib
 geopy
+scipy
+PyYAML

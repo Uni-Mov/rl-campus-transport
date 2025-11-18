@@ -71,7 +71,7 @@ export const PointSelectionMap = ({
   };
 
   return (
-    <div className="w-full h-full">
+    <div className="w-full h-full overflow-hidden">
       <DeckGL
         initialViewState={initialViewState}
         viewState={viewState}

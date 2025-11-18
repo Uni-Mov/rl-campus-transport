@@ -20,16 +20,18 @@ export const useRegister = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
-    const name = formData.get('username') as string;
-    const lastname = formData.get('lastname') as string;
+    const name = formData.get('name') as string;
+    const lastname = formData.get('lastName') as string;
+    const dni = formData.get('dni') as string;
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
+    const role = formData.get('role') as string;
     if (!validatePassword(password)) {
       return;
     }
     setError("");
     try {
-      register(name, lastname, email, password);
+      (register as any)(name, lastname, dni, email, password, role);
     } catch {
       setError("failed in register");
     }

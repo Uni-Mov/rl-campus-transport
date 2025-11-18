@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 import osmnx as ox
 
-GRAPH_PATH = Path("ia_ml/src/data/grafo_rio_cuarto.graphml")
+GRAPH_PATH = Path("../data/grafo_rio_cuarto.graphml")
 SHOW_N = 5  # How many nodes/edges to show
 
 def load_graph(path: Path):

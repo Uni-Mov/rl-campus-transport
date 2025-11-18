@@ -1,6 +1,8 @@
 """API endpoints for user-related operations."""
 
 from flask import Blueprint, jsonify, abort, request
+from werkzeug.security import check_password_hash
+from uuid import uuid4
 from app.core.database import SessionLocal
 from app.repositories.user_repository import UserRepository
 from app.services.user_service import UserService
@@ -66,3 +68,27 @@ def create_user():
             abort(500, description="Internal Server Error during user creation")
 
     return jsonify(new_user_data), 201
+
+
+@bp.route("/login", methods=["POST"])
+def login():
+    """Authenticate a user and return a token."""
+    data = request.get_json()
+    if not data or "email" not in data or "password" not in data:
+        abort(400, description="Missing email or password")
+
+    with SessionLocal() as session:
+        user_repository = UserRepository(session)
+        user = user_repository.get_by_email(data["email"])
+
+        if user is None or not check_password_hash(user.password_hash, data["password"]):
+            abort(401, description="Invalid credentials")
+
+    token = str(uuid4())
+    return jsonify({"token": token})
+
+
+@bp.route("/logout", methods=["POST"])
+def logout():
+    """Logout endpoint"""
+    return jsonify({"message": "Logged out"})

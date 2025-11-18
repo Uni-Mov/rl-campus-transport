@@ -4,24 +4,33 @@ FROM python:3.12-slim
 # Set the working directory inside the container
 WORKDIR /app
 
-# Install system dependencies needed to build Python packages
+# Install system dependencies needed to build Python packages and for osmnx/networkx
 # 'build-essential' includes gcc, make, etc.
-# Then clean the apt cache to reduce image size
+# GDAL and spatial libraries are needed for osmnx
 RUN apt-get update && apt-get install -y \
     build-essential \
+    gdal-bin \
+    libgdal-dev \
+    libspatialindex-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy the requirements file into the container
-COPY backend/requirements.txt .
+# Copy the requirements files into the container
+COPY backend/requirements.txt ./backend-requirements.txt
+COPY ia_ml/requirements.txt ./ia_ml-requirements.txt
 
-# Install Python dependencies from requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+# Install Python dependencies from both requirements files
+RUN pip install --no-cache-dir -r backend-requirements.txt
+RUN pip install --no-cache-dir -r ia_ml-requirements.txt
 
-# Copy the backend source code into the container
-COPY backend/ .
+# Copy the backend and ia_ml source code into the container
+COPY backend/ ./backend/
+COPY ia_ml/ ./ia_ml/
 
 # Expose port 5000, which Flask uses by default
 EXPOSE 5000
+
+# Change working directory to backend so imports work correctly
+WORKDIR /app/backend
 
 # Default command to run the application
 CMD ["python", "-m", "app.main"]

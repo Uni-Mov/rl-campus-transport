@@ -1,6 +1,11 @@
+import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
+
 export default function CommunitySection() {
+    const { isLoggedIn } = useAuth();
+    const navigate = useNavigate();
     return ( 
-        <section id="community" className="pt-4 md:pt-8 pb-20 px-4 bg-gray-50 scroll-mt-40">
+      <section id="community" className="pt-4 md:pt-8 pb-20 px-4 bg-gray-50 scroll-mt-40">
         <div className="max-w-6xl mx-auto text-center">
           <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">Join Our Community</h2>
           <p className="text-xl text-gray-600 mb-12 max-w-2xl mx-auto">
@@ -23,8 +28,17 @@ export default function CommunitySection() {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button className="px-8 py-3 bg-emerald-600 text-white rounded-lg text-lg font-medium hover:bg-emerald-700 transition-colors">
-              Get Early Access
+            <button 
+              className="px-8 py-3 bg-emerald-600 text-white rounded-lg text-lg font-medium hover:bg-emerald-700 transition-colors"
+              onClick={() => {
+                if (isLoggedIn) {
+                  navigate("/travel");
+                } else {
+                  navigate("/login");
+                }
+              }}
+            >
+              Try it out!
             </button> 
           </div>
         </div>

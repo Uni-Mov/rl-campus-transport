@@ -1,3 +1,3 @@
 export const MemoryDB = {
-  users: [] as { name: string; email: string; password: string }[],
+  users: [] as { firstname: string; lastname: string; dni: string; email: string; password: string; role: string }[],
 };

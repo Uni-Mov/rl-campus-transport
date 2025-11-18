@@ -1,4 +1,12 @@
-__pycache__
+__pycache__/
+*.pyc
 cache/
 *.graphml
 .coverage
+venv/
+*.pkl
+*.png
+*.log
+*.csv
+logs/tensorboard/
+

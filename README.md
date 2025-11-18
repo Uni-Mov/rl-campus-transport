@@ -13,8 +13,92 @@ Repository for the **Project 2025** course at UNRC. The goal is to develop an ap
 
 - **Frontend:** React + Tailwind + Vite + TypeScript  
 - **Backend:** Python + Flask + Pytest  
-- **AI/ML:** numpy, pandas, scikit-learn, tensorflow, keras  
+- **AI/ML:** numpy, pandas, scikit-learn, tensorflow, keras, stable-baselines3
 - **Street Graphs:** OpenStreetMap + osmnx  
+
+## Getting Started
+
+### Prerequisites
+
+- Docker and Docker Compose
+- Python 3.12+ (for local development)
+- Node.js 18+ (for frontend development)
+
+### Quick Start with Docker
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/Uni-Mov/rl-campus-transport.git
+   cd rl-campus-transport
+   ```
+
+2. **Build and run with Docker Compose**
+   ```bash
+   cd docker
+   docker-compose up --build
+   ```
+
+3. **Access the services**
+   - Frontend: http://localhost:5173
+   - Backend API: http://localhost:5000
+   - Database: PostgreSQL on port 5432
+
+### API Usage
+
+#### Calculate Route
+
+**GET Request:**
+```bash
+curl "http://localhost:5000/paths/calculate?start_node=-64.351,-33.123&end_node=-64.350,-33.124"
+```
+
+**POST Request:**
+```bash
+curl -X POST http://localhost:5000/paths/calculate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "start_node": [-64.351, -33.123],
+    "end_node": [-64.350, -33.124],
+    "waypoints": [[-64.3505, -33.123]]
+  }'
+```
+
+**Response:**
+```json
+{
+  "route": [
+    {
+      "coordinates": [
+        [-64.351276, -33.1226042],
+        [-64.3502838, -33.1228578],
+        [-64.3493391, -33.1230822],
+        [-64.3496873, -33.1241433]
+      ],
+      "distance": 313.38,
+      "duration": 376.06
+    }
+  ],
+  "waypoints": []
+}
+```
+
+## Project Structure
+
+```
+rl-campus-transport/
+├── backend/          # Flask API
+├── frontend/         # React application
+├── ia_ml/           # Reinforcement Learning model
+│   ├── src/
+│   │   ├── api/     # API integration
+│   │   ├── envs/    # RL environments
+│   │   ├── training/# Training scripts
+│   │   └── utils/   # Utilities
+│   ├── scripts/     # Helper scripts
+│   └── logs/        # Training logs and models
+├── docker/          # Docker configuration
+└── docs/           # Documentation
+```
 
 ## Contribution
 
@@ -22,12 +106,12 @@ Repository for the **Project 2025** course at UNRC. The goal is to develop an ap
 
 ## Team Members
 
-- Agustin Alieni – rol  
-- Francisco Barosco – rol  
-- Hernan Jara – rol  
-- Francisco Natale – rol
-- Franco Vesnaver - rol
-- Valentino Vilar - rol
+- Agustin Alieni   
+- Francisco Barosco   
+- Hernan Jara   
+- Francisco Natale 
+- Franco Vesnaver 
+- Valentino Vilar 
 
 ## License
 

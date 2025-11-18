@@ -55,7 +55,7 @@ export const TravelWithRoute = ({
   };
 
   return (
-    <div className="w-full h-[80vh] max-w-7xl mx-auto relative rounded-lg overflow-hidden shadow">
+    <div className="absolute inset-0 w-full h-full overflow-hidden">
       <TripControls
         isTripStarted={isTripStarted}
         isTripCompleted={isTripCompleted}

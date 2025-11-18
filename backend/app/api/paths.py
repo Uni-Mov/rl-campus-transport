@@ -2,51 +2,95 @@
 
 from flask import Blueprint, jsonify, request
 
-# TODO: Cuando el equipo de IA/RL implemente "find_ai_route", se debera importar ACA!
-# from ia_ml.main import find_ai_route #EJEMPLO DE IMPORTACION
+from ia_ml.src.api.main import find_ai_route
 
 paths_bp = Blueprint("paths", __name__)
 
-@paths_bp.route("/calculate", methods=["GET"])
+@paths_bp.route("/calculate", methods=["GET", "POST"])
 def get_path():
     """
     Endpoint for calculating the optimal route between two points and waypoints.
-    Receives the start and end nodes and waypoints as URL parameters.
+    
+    GET: Expects query parameters:
+      - start_node: "lon,lat"
+      - end_node: "lon,lat"  
+      - waypoints: "lon1,lat1;lon2,lat2;..." (optional)
+      
+    POST: Expects JSON body with keys:
+      - start_node: [lng, lat]
+      - end_node: [lng, lat]
+      - waypoints: optional list of [lng, lat]
     """
+    
+    # Handle GET requests with query parameters
+    if request.method == "GET":
+        start_node_str = request.args.get("start_node")
+        end_node_str = request.args.get("end_node")
+        
+        if not start_node_str or not end_node_str:
+            return jsonify({"error": "The 'start_node' and 'end_node' parameters are required"}), 400
+        
+        try:
+            # Parse start_node y end_node como "lon,lat"
+            start_coords = [float(x) for x in start_node_str.split(",")]
+            end_coords = [float(x) for x in end_node_str.split(",")]
+            
+            if len(start_coords) != 2 or len(end_coords) != 2:
+                return jsonify({"error": "Coordinates must be in format 'lon,lat'"}), 400
+            
+            # Parse waypoints como "lon1,lat1;lon2,lat2;..."
+            waypoints_str = request.args.get("waypoints", "")
+            waypoints = []
+            if waypoints_str:
+                for wp_str in waypoints_str.split(";"):
+                    wp_coords = [float(x) for x in wp_str.split(",")]
+                    if len(wp_coords) != 2:
+                        return jsonify({"error": "Each waypoint must be in format 'lon,lat'"}), 400
+                    waypoints.append(wp_coords)
+        except ValueError:
+            return jsonify({"error": "Parameters must be valid numbers."}), 400
+            
+        start_node = start_coords
+        end_node = end_coords
+        
+    # Handle POST requests with JSON body
+    else:
+        data = request.get_json(silent=True)
+        if not data:
+            return jsonify({"error": "JSON body is required"}), 400
 
-    start_node_srt = request.args.get("start_node")
-    end_node_srt = request.args.get("end_node")
+        start_node = data.get("start_node")
+        end_node = data.get("end_node")
+        waypoints = data.get("waypoints", [])
 
-    if not start_node_srt or not end_node_srt:
-        return jsonify({"error": "The 'start_node' and 'end_node' parameters are required"}), 400
+        if start_node is None or end_node is None:
+            return jsonify({"error": "The 'start_node' and 'end_node' fields are required in JSON body"}), 400
 
-    try:
-        start_node = float(start_node_srt)
-        end_node = float(end_node_srt)
-        waypoints_srt = request.args.get("waypoints", "")
-        waypoints = [float(wp) for wp in waypoints_srt.split(",")]
-    except ValueError:
-        return jsonify({"error": "Parameters must be valid numbers (integers or decimals)."}) , 400
+        try:
+            # validate start and end as coordinate pairs
+            if not (isinstance(start_node, (list, tuple)) and len(start_node) >= 2):
+                raise ValueError("start_node must be a [lng, lat] pair")
+            if not (isinstance(end_node, (list, tuple)) and len(end_node) >= 2):
+                raise ValueError("end_node must be a [lng, lat] pair")
 
-    # 2. Llamar al modelo de IA real
-    # TODO: Descomentar y ajustar esta línea cuando la función de IA esté disponible.
-    # route_data = find_ai_route(
-    #     start_node_coord=start_node, # Nombres de parámetro sugeridos
-    #     waypoints_coords=waypoints,
-    #     end_node_coord=end_node
-    # )
+            start_node = [float(start_node[0]), float(start_node[1])]
+            end_node = [float(end_node[0]), float(end_node[1])]
 
-    # --- INICIO: Bloque de código temporal para evitar errores ---
-    route_data = {
-        "coordinates": [
-            [-64.349, -33.123],
-            [-64.350, -33.124],
-            [-64.351, -33.125]
-        ],
-        "duration": 130.0,
-        "distance": 1100.5
-    }
-    # --- FIN: Bloque de código temporal ---
+            parsed_waypoints = []
+            if isinstance(waypoints, (list, tuple)):
+                for wp in waypoints:
+                    if not (isinstance(wp, (list, tuple)) and len(wp) >= 2):
+                        raise ValueError("each waypoint must be a [lng, lat] pair")
+                    parsed_waypoints.append([float(wp[0]), float(wp[1])])
+            else:
+                raise ValueError("waypoints must be an array of [lng, lat] pairs")
+
+            waypoints = parsed_waypoints
+        except (ValueError, TypeError) as e:
+            return jsonify({"error": str(e)}), 400
+
+    # Call AI route finder (with A* fallback)
+    route_data = find_ai_route(start_node, waypoints, end_node)
 
     if not route_data:
         return jsonify({"error": "A route could not be found with the provided parameters."}), 500
