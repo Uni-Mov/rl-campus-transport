@@ -6,4 +6,7 @@ cache/
 venv/
 *.pkl
 *.png
+*.log
+*.csv
+logs/tensorboard/
 
