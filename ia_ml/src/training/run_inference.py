@@ -101,10 +101,29 @@ def run_episode(
     environment_cfg, rewards_cfg = cfg["environment"], cfg["rewards"]
     env = create_masked_waypoint_env(graph, waypoints, start, destination, environment_cfg, rewards_cfg)
 
+    from src.envs.legacy_wrapper import LegacyObservationWrapper
+
     if not os.path.exists(model_path):
         raise FileNotFoundError(f"No se encontro el modelo en {model_path}")
 
-    model = PPO.load(model_path, env=env)
+    # Cargar modelo sin env primero para verificar obs space
+    try:
+        model = PPO.load(model_path)
+    except Exception:
+        # Fallback si falla carga sin env (raro en SB3 pero posible)
+        model = PPO.load(model_path, env=env)
+
+    # Verificar compatibilidad de espacios
+    if model.observation_space.shape != env.observation_space.shape:
+        print(f"[WARNING] Mismatch de obs space: Modelo {model.observation_space.shape} vs Env {env.observation_space.shape}")
+        if model.observation_space.shape == (69,) and env.observation_space.shape[0] > 69:
+            print("[INFO] Aplicando LegacyObservationWrapper para compatibilidad...")
+            env = LegacyObservationWrapper(env)
+        else:
+            # Si no es el caso conocido, intentar cargar normal y dejar que explote o warn
+            pass
+    
+    model.set_env(env)
 
     obs, info = env.reset()
     done = False

@@ -24,7 +24,30 @@ IA_ML_DIR = str(Path(__file__).parent.parent.resolve())
 if IA_ML_DIR not in sys.path:
     sys.path.insert(0, IA_ML_DIR)
 
-from src.data.download_graph import get_graph_relabel
+def load_graph_with_radius(locality: str, radius_meters: float) -> nx.MultiDiGraph:
+    """Descarga la red vial centrada en la localidad con un radio dado.
+
+    Esto usa el centro geocodificado de la localidad y `graph_from_point` con
+    `dist=radius_meters`, por lo que incluye localidades aledañas si el radio
+    supera el área administrativa (ej: 10 km incluye Higueras y alrededores).
+    """
+    # Silenciar logs y reutilizar cache de OSMnx
+    try:
+        ox.config(use_cache=True, log_console=False)
+    except AttributeError:
+        try:
+            ox.settings.use_cache = True
+            ox.settings.log_console = False
+        except Exception:
+            pass
+
+    # Geocodificar y descargar grafo por radio
+    center_lat, center_lon = ox.geocode(locality)
+    return ox.graph_from_point(
+        (center_lat, center_lon),
+        dist=radius_meters,
+        network_type="drive",
+    )
 
 
 def calculate_graph_center(graph: nx.MultiDiGraph) -> tuple:
@@ -141,11 +164,11 @@ Ejemplos:
     
     args = parser.parse_args()
     
-    # Cargar/descargar grafo usando download_graph
-    print(f" Cargando/descargando grafo para: {args.locality}")
-    graph, _, _ = get_graph_relabel(args.locality, return_original=False)
-    
-    print(f"Grafo original: {graph.number_of_nodes()} nodos, {graph.number_of_edges()} edges")
+    # Descargar grafo usando radio para incluir localidades cercanas (e.g., Higueras)
+    print(f" Cargando/descargando grafo por radio {args.radius} m desde: {args.locality}")
+    graph = load_graph_with_radius(args.locality, args.radius)
+
+    print(f"Grafo descargado: {graph.number_of_nodes()} nodos, {graph.number_of_edges()} edges")
     
     # Calcular centro del grafo
     print(f" Calculando centro geográfico del grafo...")
